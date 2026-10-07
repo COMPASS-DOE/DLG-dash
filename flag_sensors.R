@@ -8,8 +8,8 @@
 # This one is a tibble because TEROS is three variables in a single dataset
 TEROS_RANGE <- tribble(~variable, ~low, ~high,
                        "EC",      10,   4500, #225 normally
-                       "TSOIL",   5,   25,
-                       "VWC",     2000, 4000,
+                       "temp",   5,   25,
+                       "vwc",     2000, 4000,
                        "MP", -100000, 0)
 SAPFLOW_RANGE <- c(0.2, 0.8) # roughly the 10%/90% quantiles of test data
 VOLTAGE_RANGE <- c(12, 14.3) # roughly 0.05%/99.5% quantiles of test data
