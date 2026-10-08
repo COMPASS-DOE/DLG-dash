@@ -42,7 +42,7 @@ server <- function(input, output, session) {
       battery <- readRDS("offline-data/battery")
       max(battery$Timestamp)
     } else {
-      Sys.time()
+      Sys.time() |> with_tz(tzone = "EST")
     }
   })
   
@@ -78,31 +78,32 @@ server <- function(input, output, session) {
   # its date input field if the datetime changes
   progress <- gearServer("gear", session, DASHBOARD_DATETIME)
   
-  observeEvent({
-    input$prog_button
-    dataInvalidate() # for actual app, we can have multiple triggers
-  }, {
-    elapsed <- difftime(reactive({ DASHBOARD_DATETIME() })(),
-                        progress()$EVENT_START,
-                        units = "hours")
-    circleval <- round(as.numeric(elapsed) / progress()$EVENT_HOURS, 2)
-    
-    # Don't show a flood progress indicator if too far beyond the end
-    if(circleval < 0.0 || circleval > 1.05) circleval <- NA
-    
-    update_progress("circle", circleval)
-  })
+  time_elapsed <- eventReactive(
+    list(input$prog_button, dataInvalidate()),
+    {
+      start <- progress()$EVENT_START
+      end   <- reactive({ DASHBOARD_DATETIME() })()
+
+      mins <- floor(as.numeric(end - start, units = "mins"))
+      sprintf("%d hours and %d minutes", mins %/% 60, mins %% 60)
+      
+      # difftime(reactive({ DASHBOARD_DATETIME() })(),
+      #          progress()$EVENT_START,
+      #          units = "hours") |> 
+      #   seconds_to_period(as.numeric(round(elapsed, digits = 2), units = "secs")) -> elapsed
+      
+    }, 
+    ignoreInit = FALSE)
+  
+  output$elapsed <- renderText(time_elapsed())
+  
   
   # ------------------ Main dashboard bad sensor tables --------------------
-  
-  # output$DDT <- reactive({
-  #     # Ensure that DDT (dashboard datetime) is displayed EST
-  #     paste(format(DASHBOARD_DATETIME(), tz = "EST"), "EST")
-  # })
-  # 
+
   output$teros_bad_sensors_table <- DT::renderDataTable({
       dropbox_data()[["teros_bad_sensors"]] %>%
-          datatable(options = list(searching = FALSE, pageLength = 5))
+          datatable(options = list(searching = FALSE, pageLength = 5),
+                    class = 'cell-border')
   })
   # 
   # output$troll_bad_sensors <- DT::renderDataTable({
@@ -124,21 +125,22 @@ server <- function(input, output, session) {
       
       dropbox_data()[["teros"]] %>%
         rename(Timestamp = TIMESTAMP) |> 
-        filter(Sensor_ID %in% tsensor_selected$Sensor_ID,
-               variable %in% tsensor_selected$variable,
-               depth_cm %in% tsensor_selected$depth_cm,
-               Logger %in% tsensor_selected$Logger) -> selected_data
-      browser()
-      ggplot(selected_data, aes(Timestamp, value, group = interaction(Sensor_ID, variable))) +
+        semi_join(tsensor_selected, 
+                  by = c("Logger", "Plot", "Sensor_ID", "Location", "variable", "depth_cm"))-> selected_data
+      
+      ggplot(selected_data, aes(Timestamp, value, group = interaction(Sensor_ID, variable, depth_cm))) +
         geom_line() +
         xlab("") -> b #+
-        # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
+
+              # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
       # Try to assign color intelligently. If different plots are selected,
       # have that be the color; otherwise by depth; otherwise by ID
       if(length(unique(selected_data$Plot)) > 1) {
         b <- b + aes(color = Plot)
-      } else if(length(unique(selected_data$Depth)) > 1)  {
-        b <- b + aes(color = depth_cm)
+      } else if(length(unique(selected_data$variable)) > 1) {
+        b <- b + aes(color = variable)
+      }else if(length(unique(selected_data$depth_cm)) > 1)  {
+        b <- b + aes(color = as.factor(depth_cm))
       } else {
         b <- b + aes(color = Sensor_ID)
       }
@@ -146,7 +148,7 @@ server <- function(input, output, session) {
     } else {
       b <- NO_DATA_GRAPH
     }
-    plotly::ggplotly(b)
+    b
   })
   
   # ------------------ TEROS tab ---------------------------

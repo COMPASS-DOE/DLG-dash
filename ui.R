@@ -9,6 +9,7 @@ library(shinyWidgets)
 library(shinybusy)
 library(shinyalert)
 library(gmailr)
+library(bslib)
 
 ui <- dashboardPage(
   
@@ -26,6 +27,18 @@ ui <- dashboardPage(
   ),
   dashboardBody(
     tags$head(tags$style(".shiny-notification {position: fixed; top: 30% ;left: 50%; width: 300px")),
+    # Add this custom CSS to force the data table elements to be white
+    tags$head(
+      tags$style(HTML("
+      .dataTables_wrapper, table.dataTable {
+        background-color: white !important;
+      }
+      .dataTables_wrapper table.dataTable th,
+      .dataTables_wrapper table.dataTable td {
+        background-color: white !important;
+      }
+    "))
+    ),
     tabItems(
       tabItem(
         tabName = "dashboard",
@@ -41,12 +54,19 @@ ui <- dashboardPage(
         ),
         fluidRow(
           # Gear UI is defined in R/gear_module.R
-          column(1, gearUI("gear")),
+          column(1, 
+                 gearUI("gear")),
           column(5,
-                 progress_circle(value = 0, shiny_id = "circle",
-                                 color = "#00B0CA", stroke_width = 15,
-                                 trail_color = "#BBE7E6"),
-                 tags$h3("Flood Progress", align = "center")
+                 # progress_circle(value = 0, shiny_id = "circle",
+                 #                 color = "#00B0CA", stroke_width = 15,
+                 #                 trail_color = "#BBE7E6"),
+                 # tags$h3("Flood Progress", align = "center")
+                 shinydashboardPlus::box(
+                   title = "Flood Stats",
+                   width = 12,
+                   background = "teal",
+                   textOutput("elapsed")
+                 )
           ),
           column(width = 6,
                  tabBox(width = 12,
