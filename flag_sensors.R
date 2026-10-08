@@ -6,22 +6,26 @@
 
 # For TEROS, these are all 1%/99% quantiles of test data
 # This one is a tibble because TEROS is three variables in a single dataset
-TEROS_RANGE <- tribble(~variable, ~low, ~high,
-                       "EC",      10,   4500, #225 normally
+TEROS12_RANGE <- tribble(~variable, ~low, ~high,
+                       "EC",     10,   4500, #225 normally
                        "temp",   5,   25,
-                       "vwc",     2000, 4000,
-                       "MP", -100000, 0)
+                       "vwc",    2000, 4000)
+
+TEROS21_RANGE <- tribble(~variable, ~low, ~high,
+                       "MP",  -100000, 0,
+                       "vwc", 2000, 4000)
+
 SAPFLOW_RANGE <- c(0.2, 0.8) # roughly the 10%/90% quantiles of test data
 VOLTAGE_RANGE <- c(12, 14.3) # roughly 0.05%/99.5% quantiles of test data
 
 AQUATROLL_RANGE <- tribble(~variable, ~low,   ~high,
-                       "Salinity",      0,    0.2,
-                       "Temp",          0,    35, # roughly 1%/99% quantiles of test data
-                       "DO_mgl",        0.05, 9.95,
-                       "Pressure_psi",  10,   20)
+                       "salinity",      0,    350,
+                       "temperature",   -5,    50, # roughly 1%/99% quantiles of test data
+                       "rdo-conc",      0, 20,
+                       "density",       0.98,   1.05)
 
 AQUATROLL_TEMP_RANGE <- unlist(
-    AQUATROLL_RANGE[AQUATROLL_RANGE$variable=="Temp", c("low", "high")]
+    AQUATROLL_RANGE[AQUATROLL_RANGE$variable=="temperature", c("low", "high")]
     )
 
 DO_RANGE <- c(-5, 120)

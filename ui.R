@@ -21,7 +21,10 @@ ui <- dashboardPage(
   dashboardSidebar(
     sidebarMenu(
       menuItem("Dashboard", tabName = "dashboard", icon = icon("compass")),
-      menuItem("TEROS12", tabName = "teros12", icon = icon("temperature-high"))
+      menuItem("TEROS12", tabName = "teros12", icon = icon("temperature-high")),
+      menuItem("TEROS21", tabName = "teros21", icon = icon("worm")),
+      menuItem("Aquatroll", tabName = "aquatroll", icon = icon("water")),
+      menuItem("LevelTROLL", tabName = "leveltroll", icon = icon("wifi"))
       #menuItem("Alerts", tabName = "alerts", icon = icon("comment-dots"))
     )
   ),
@@ -49,8 +52,9 @@ ui <- dashboardPage(
           textOutput("DDT"),
           
           # Front page badges; their attributes are computed by the server
-          valueBoxOutput("teros_bdg", width = 2)#,
-          #valueBoxOutput("aquatroll_bdg", width = 2),
+          valueBoxOutput("teros12_bdg", width = 2),
+          valueBoxOutput("teros21_bdg", width = 2),
+          valueBoxOutput("troll600_bdg", width = 2),
         ),
         fluidRow(
           # Gear UI is defined in R/gear_module.R
@@ -72,12 +76,16 @@ ui <- dashboardPage(
                  tabBox(width = 12,
                         tabPanel(
                           title = "TEROS12",
-                          dataTableOutput("teros_bad_sensors_table")
-                        )#,
-                        # tabPanel(
-                        #   title = "AquaTroll",
-                        #   dataTableOutput("troll_bad_sensors")
-                        # )
+                          dataTableOutput("teros12_bad_sensors_table")
+                        ),
+                        tabPanel(
+                          title = "TEROS21",
+                          dataTableOutput("teros21_bad_sensors_table")
+                        ),
+                        tabPanel(
+                          title = "AquaTroll",
+                          dataTableOutput("troll600_bad_sensors_table")
+                        )
                  )
           )
         ),
@@ -85,12 +93,16 @@ ui <- dashboardPage(
           tabBox(width = 12,
                  tabPanel(
                    title = "TEROS12",
-                   plotOutput("bad_teros_plot", height = "400px")
-                 )#,
-                 # tabPanel(
-                 #   title = "AquaTroll",
-                 #   plotlyOutput("aquatroll_plot", height = "400px")
-                 # )
+                   plotOutput("bad_teros12_plot", height = "400px")
+                 ),
+                 tabPanel(
+                   title = "TEROS21",
+                   plotOutput("bad_teros21_plot", height = "400px")
+                 ),
+                 tabPanel(
+                   title = "AquaTroll",
+                   plotlyOutput("bad_troll600_plot", height = "400px")
+                 )
           )
         )
       ),
@@ -98,6 +110,18 @@ ui <- dashboardPage(
         tabName = "teros12",
         fluidRow(
           plotOutput("teros_plot", width = "100%", height = "700px")
+        )
+      ),
+      tabItem(
+        tabName = "teros21",
+        fluidRow(
+          plotOutput("teros21_plot", width = "100%", height = "700px")
+        )
+      ),
+      tabItem(
+        tabName = "aquatroll",
+        fluidRow(
+          plotOutput("aquatroll_plot", width = "100%", height = "700px")
         )
       )
       # Alerts tab UI is defined in R/alerts_module.R

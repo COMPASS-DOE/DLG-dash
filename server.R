@@ -18,18 +18,7 @@ server <- function(input, output, session) {
   TESTING <<- TESTING || Sys.getenv("CI") == "true"
   
   # ------------------ Read in sensor data -----------------------------
-  
-  # The server normally accesses the SERC Dropbox to download data
-  # If we are TESTING, however, skip this and use local test data only
-  if(!TESTING & DATA_SOURCE == "dropbox") {
-    datadir <- "TEMPEST_PNNL_Data/Current_Data"
-    token <- readRDS("droptoken.rds")
-    cursor <- rdrop2refreshtoken::drop_dir(datadir, cursor = TRUE, dtoken = token)
-  } else if (!TESTING & DATA_SOURCE == "local") {
-    datadir <- "~/Dropbox (Smithsonian)/TEMPEST_PNNL_Data/Current_data/"
-    token <- NULL
-  }
-  
+
   # DASHBOARD_DATETIME is the datetime that the dashboard is showing
   # Normally this is just now (i.e., Sys.time()), but when testing
   # it will be the latest date of the static testing data
@@ -62,13 +51,19 @@ server <- function(input, output, session) {
     } else if(DATA_SOURCE == "github"){
       
       read_parquet("https://github.com/COMPASS-DOE/sensor-data-preprocessor/blob/main/processed_data/DLG_TEROS12.parquet?raw=true") |> 
-        compute_teros(ddt) -> teros_list
+        compute_teros12(ddt) -> teros12_list
+      
+      read_parquet("https://github.com/COMPASS-DOE/sensor-data-preprocessor/blob/main/processed_data/DLG_TEROS21.parquet?raw=true") |> 
+        compute_teros21(ddt) -> teros21_list
+      
+      read_parquet("https://github.com/COMPASS-DOE/sensor-data-preprocessor/blob/main/processed_data/DLG_AQUATROLL600.parquet?raw=true") |> 
+        compute_aquatroll(ddt) -> aquatroll_list
       
     }
     
     # Do limits testing and compute data needed for badges
     # compute_sapflow() etc. are defined in R/data_processing.R
-    c(teros_list)
+    c(teros12_list, teros21_list, aquatroll_list)
   })
   
   # ------------------ Gear and progress circle --------------------------
@@ -100,30 +95,34 @@ server <- function(input, output, session) {
   
   # ------------------ Main dashboard bad sensor tables --------------------
 
-  output$teros_bad_sensors_table <- DT::renderDataTable({
-      dropbox_data()[["teros_bad_sensors"]] %>%
-          datatable(options = list(searching = FALSE, pageLength = 5),
-                    class = 'cell-border')
+  output$teros12_bad_sensors_table <- DT::renderDataTable({
+      dropbox_data()[["teros12_bad_sensors"]] %>%
+          datatable(options = list(searching = FALSE, pageLength = 5))
   })
-  # 
-  # output$troll_bad_sensors <- DT::renderDataTable({
-  #     dropbox_data()[["aquatroll_bad_sensors"]] %>%
-  #         datatable(options = list(searching = FALSE, pageLength = 5))
-  # })
+  
+  output$teros21_bad_sensors_table <- DT::renderDataTable({
+    dropbox_data()[["teros21_bad_sensors"]] %>%
+      datatable(options = list(searching = FALSE, pageLength = 5))
+  })
+  
+  output$troll600_bad_sensors_table <- DT::renderDataTable({
+      dropbox_data()[["troll600_bad_sensors"]] %>%
+          datatable(options = list(searching = FALSE, pageLength = 5))
+  })
   
   # ------------------ Main dashboard bad sensor graphs  -----------------------
   
-  output$bad_teros_plot <- renderPlot({
+  output$bad_teros12_plot <- renderPlot({
     
-    if(length(input$teros_bad_sensors_table_rows_selected)) {
+    if(length(input$teros12_bad_sensors_table_rows_selected)) {
       
       ddt <- reactive({ DASHBOARD_DATETIME() })()
       
-      dropbox_data()[["teros_bad_sensors"]] %>%
-        slice(input$teros_bad_sensors_table_rows_selected) ->
+      dropbox_data()[["teros12_bad_sensors"]] %>%
+        slice(input$teros12_bad_sensors_table_rows_selected) ->
         tsensor_selected
       
-      dropbox_data()[["teros"]] %>%
+      dropbox_data()[["teros12"]] %>%
         rename(Timestamp = TIMESTAMP) |> 
         semi_join(tsensor_selected, 
                   by = c("Logger", "Plot", "Sensor_ID", "Location", "variable", "depth_cm"))-> selected_data
@@ -151,7 +150,79 @@ server <- function(input, output, session) {
     b
   })
   
-  # ------------------ TEROS tab ---------------------------
+  output$bad_teros21_plot <- renderPlot({
+    
+    if(length(input$teros21_bad_sensors_table_rows_selected)) {
+      
+      ddt <- reactive({ DASHBOARD_DATETIME() })()
+      
+      dropbox_data()[["teros21_bad_sensors"]] %>%
+        slice(input$teros21_bad_sensors_table_rows_selected) ->
+        tsensor_selected
+      
+      dropbox_data()[["teros21"]] %>%
+        rename(Timestamp = TIMESTAMP) |> 
+        semi_join(tsensor_selected, 
+                  by = c("Logger", "Plot", "Sensor_ID", "Location", "variable", "depth_cm"))-> selected_data
+      
+      ggplot(selected_data, aes(Timestamp, value, group = interaction(Sensor_ID, variable, depth_cm))) +
+        geom_line() +
+        xlab("") -> b #+
+      
+      # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
+      # Try to assign color intelligently. If different plots are selected,
+      # have that be the color; otherwise by depth; otherwise by ID
+      if(length(unique(selected_data$Plot)) > 1) {
+        b <- b + aes(color = Plot)
+      } else if(length(unique(selected_data$variable)) > 1) {
+        b <- b + aes(color = variable)
+      }else if(length(unique(selected_data$depth_cm)) > 1)  {
+        b <- b + aes(color = as.factor(depth_cm))
+      } else {
+        b <- b + aes(color = Sensor_ID)
+      }
+      
+    } else {
+      b <- NO_DATA_GRAPH
+    }
+    b
+  })
+  
+  output$bad_troll600_plot <- renderPlot({
+    
+    if(length(input$troll600_bad_sensors_table_rows_selected)) {
+      
+      ddt <- reactive({ DASHBOARD_DATETIME() })()
+      
+      dropbox_data()[["troll600_bad_sensors"]] %>%
+        slice(input$troll600_bad_sensors_table_rows_selected) ->
+        tsensor_selected
+      
+      dropbox_data()[["troll600"]] %>%
+        rename(Timestamp = TIMESTAMP) |> 
+        semi_join(tsensor_selected, 
+                  by = c("Logger", "Plot", "variable", "Instrument"))-> selected_data
+      
+      ggplot(selected_data, aes(Timestamp, value, group = variable)) +
+        geom_line() +
+        xlab("") -> b #+
+      
+      # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
+      # Try to assign color intelligently. If different plots are selected,
+      # have that be the color; otherwise by depth; otherwise by ID
+      if(length(unique(selected_data$Plot)) > 1) {
+        b <- b + aes(color = Plot)
+      } else if(length(unique(selected_data$variable)) > 1) {
+        b <- b + aes(color = variable)
+      }
+      
+    } else {
+      b <- NO_DATA_GRAPH
+    }
+    b
+  })
+  
+  # ------------------ TEROS12 tab ---------------------------
   
   # Define a semi-transparent rectangle to indicate flood start/stop
   # We have to use a geom_rect to accommodate the faceted TEROS plot
@@ -171,19 +242,64 @@ server <- function(input, output, session) {
     
     ddt <- reactive({ DASHBOARD_DATETIME() })()
     
-    dropbox_data()[["teros"]] ->
-      teros
+    dropbox_data()[["teros12"]] ->
+      teros12
     
-    if(nrow(teros)) {
+    if(nrow(teros12)) {
 
-      teros %>%
+      teros12 %>%
         # Certain versions of plotly seem to have a bug and produce
         # a tidyr::pivot error when there's a 'variable' column; rename
         rename(var = variable, Timestamp = TIMESTAMP) %>%
         #mutate(Timestamp_rounded = round_date(Timestamp, GRAPH_TIME_INTERVAL)) %>%
         group_by(Plot, var, Logger, Timestamp) %>%
         summarise(value = mean(value, na.rm = TRUE), .groups = "drop") %>%
-        left_join(TEROS_RANGE, by = c("var" = "variable")) |> 
+        left_join(TEROS12_RANGE, by = c("var" = "variable")) |> 
+        ggplot() +
+        facet_wrap(Logger ~ var, scales = "free", ncol = 3) +
+        shaded_flood_rect(ymin = -Inf, ymax = Inf) +
+        geom_line(aes(Timestamp, value, color = Plot)) +
+        xlab("") +
+        theme(text = element_text(size = 18))
+      
+    } else {
+      b <- NO_DATA_GRAPH
+    }
+  })
+  
+  # ------------------ TEROS21 tab ---------------------------
+  
+  # Define a semi-transparent rectangle to indicate flood start/stop
+  # We have to use a geom_rect to accommodate the faceted TEROS plot
+  # Each plot passes the ymin and ymax (bc plotly won't do -Inf/Inf) to `...`
+  shaded_flood_rect <- function(...)
+    reactive({
+      geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
+                
+                aes(xmin = progress()$EVENT_START,
+                    xmax = Inf, ...))
+    })() # remove the reactive before returning
+  
+  output$teros21_plot <- renderPlot({
+    # Average TEROS data by plot and 15 minute interval,
+    # one facet per sensor (temperature, moisture, conductivity)
+    # This graph is shown when users click the "TEROS" tab on the dashboard
+    
+    ddt <- reactive({ DASHBOARD_DATETIME() })()
+    
+    dropbox_data()[["teros21"]] ->
+      teros21
+    
+    if(nrow(teros21)) {
+      
+      teros21 %>%
+        # Certain versions of plotly seem to have a bug and produce
+        # a tidyr::pivot error when there's a 'variable' column; rename
+        rename(var = variable, Timestamp = TIMESTAMP) %>%
+        #mutate(Timestamp_rounded = round_date(Timestamp, GRAPH_TIME_INTERVAL)) %>%
+        group_by(Plot, var, Logger, Timestamp) %>%
+        summarise(value = mean(value, na.rm = TRUE), .groups = "drop") %>%
+        left_join(TEROS21_RANGE, by = c("var" = "variable")) |> 
         ggplot() +
         facet_wrap(Logger ~ var, scales = "free", ncol = 3) +
         shaded_flood_rect(ymin = -Inf, ymax = Inf) +
@@ -198,95 +314,49 @@ server <- function(input, output, session) {
   
   # ------------------ AquaTROLL tab ---------------------------
 
-  output$aquatroll_plot <- renderPlotly({
+  output$aquatroll_plot <- renderPlot({
     # AquaTroll data plot
     # This graph is shown when users click the "Aquatroll" tab on the dashboard
     
     ddt <- reactive({ DASHBOARD_DATETIME() })()
-    bind_rows(dropbox_data()[["aquatroll_200_long"]],
-              dropbox_data()[["aquatroll_600_long"]]) ->
-      full_trolls_long
     
-    if(nrow(full_trolls_long) > 1) {
-      full_trolls_long %>%
-        mutate(Timestamp_rounded = round_date(Timestamp, GRAPH_TIME_INTERVAL)) %>%
-        group_by(Logger_ID, Well_Name, Timestamp_rounded, variable) %>%
-        summarise(Well_Name = Well_Name,
-                  value = mean(value, na.rm = TRUE), .groups = "drop") %>%
-        left_join(AQUATROLL_RANGE, by = "variable") %>%
+    dropbox_data()[["troll600"]] ->
+      troll600
+    
+    if(nrow(troll600)) {
+
+      troll600 %>%
         # Certain versions of plotly seem to have a bug and produce
         # a tidyr::pivot error when there's a 'variable' column; rename
-        rename(var = variable) -> t
-      
-      t %>%
-        filter(var == "Pressure_psi") %>%
-        ggplot(aes(Timestamp_rounded, value, color = Well_Name)) +
-        coord_cartesian(xlim = c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) +
-        shaded_flood_rect(ymin = low, ymax = high) +
-        geom_line() +
-        geom_hline(aes(yintercept = low), color = "grey", linetype = 2) +
-        geom_hline(aes(yintercept = high), color = "grey", linetype = 2) +
-        facet_wrap(~var, scales = "free", ncol = 2) +
-        xlab("") -> t1
-      
-      t %>%
-        filter(var == "Salinity") %>%
-        ggplot(aes(Timestamp_rounded, value, color = Well_Name)) +
-        coord_cartesian(xlim = c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) +
-        shaded_flood_rect(ymin = low, ymax = high) +
-        geom_line() +
-        geom_hline(aes(yintercept = low), color = "grey", linetype = 2) +
-        geom_hline(aes(yintercept = high), color = "grey", linetype = 2) +
-        facet_wrap(~var, scales = "free", ncol = 2) +
-        xlab("") -> t2
-      
-      t %>%
-        filter(var == "Temp") %>%
-        ggplot(aes(Timestamp_rounded, value, color = Well_Name)) +
-        coord_cartesian(xlim = c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) +
-        shaded_flood_rect(ymin = low, ymax = high) +
-        geom_line() +
-        geom_hline(aes(yintercept = low), color = "grey", linetype = 2) +
-        geom_hline(aes(yintercept = high), color = "grey", linetype = 2) +
-        facet_wrap(~var, scales = "free", ncol = 2) +
-        xlab("") -> t3
-      
-      t %>%
-        filter(var == "DO_mgl") %>%
-        ggplot(aes(Timestamp_rounded, value, color = Well_Name)) +
-        coord_cartesian(xlim = c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) +
-        shaded_flood_rect(ymin = low, ymax = high) +
-        geom_line() +
-        geom_hline(aes(yintercept = low), color = "grey", linetype = 2) +
-        geom_hline(aes(yintercept = high), color = "grey", linetype = 2) +
-        facet_wrap(~var, scales = "free", ncol = 2) +
-        xlab("") -> t4
+        rename(var = variable, Timestamp = TIMESTAMP) %>%
+        left_join(AQUATROLL_RANGE, by = c("var" = "variable")) |> 
+        ggplot() +
+        facet_wrap(Logger ~ var, scales = "free", ncol = 4) +
+        shaded_flood_rect(ymin = -Inf, ymax = Inf) +
+        geom_line(aes(Timestamp, value, color = Plot)) +
+        xlab("") +
+        theme(text = element_text(size = 18))
       
     } else {
       b <- NO_DATA_GRAPH
     }
     
-    subplot(ggplotly(t1, tooltip="text", dynamicTicks = TRUE), #%>% add_range(),
-            (ggplotly(t2, tooltip="text", dynamicTicks = TRUE)), #%>% add_range()),
-            (ggplotly(t3, tooltip="text", dynamicTicks = TRUE)), #%>% add_range()),
-            (ggplotly(t4, tooltip="text", dynamicTicks = TRUE)), #%>% add_range()),
-            nrows=4, shareX = TRUE, shareY = TRUE)
   })
   
   # ------------------ Dashboard badges -----------------------------
   
-  output$teros_bdg <- renderValueBox({
-    valueBox(dropbox_data()[["teros_bdg"]]$percent_in[1],
+  output$teros12_bdg <- renderValueBox({
+    valueBox(dropbox_data()[["teros12_bdg"]]$percent_in[1],
              "TEROS12",
-             color = dropbox_data()[["teros_bdg"]]$color[1],
+             color = dropbox_data()[["teros12_bdg"]]$color[1],
              icon = icon("temperature-high")
     )
   })
   
-  output$aquatroll_bdg <- renderValueBox({
-    valueBox(dropbox_data()[["aquatroll_bdg"]]$percent_in[1],
+  output$troll600_bdg <- renderValueBox({
+    valueBox(dropbox_data()[["troll600_bdg"]]$percent_in[1],
              "AquaTroll",
-             color = dropbox_data()[["aquatroll_bdg"]]$color[1],
+             color = dropbox_data()[["troll600_bdg"]]$color[1],
              icon = icon("water")
     )
   })

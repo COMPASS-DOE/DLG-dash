@@ -30,7 +30,7 @@ TESTING <- FALSE
 DATA_SOURCE <- "github"
 
 # Flooding event length (hours)
-EVENT_LENGTH <- 10
+EVENT_LENGTH <- 3
 
 TEXT_MSG_USERS <- tribble(
     ~name,     ~number,       ~carrier,
