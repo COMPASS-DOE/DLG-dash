@@ -12,7 +12,8 @@ TEROS12_RANGE <- tribble(~variable, ~low, ~high,
                        "vwc",    2000, 4000)
 
 TEROS21_RANGE <- tribble(~variable, ~low, ~high,
-                       "MP",  -100000, 0,
+                       "mp",  -100000, 0,
+                       "temp",   5,   25,
                        "vwc", 2000, 4000)
 
 SAPFLOW_RANGE <- c(0.2, 0.8) # roughly the 10%/90% quantiles of test data
