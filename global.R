@@ -14,6 +14,7 @@ library(plotly)
 library(janitor)
 library(arrow)
 library(cowplot)
+library(tidyr)
 
 if(!require("compasstools")) {
     stop("Need to devtools::install_github('COMPASS-DOE/compasstools@bypass-dropdir')")
