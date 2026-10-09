@@ -276,7 +276,8 @@ server <- function(input, output, session) {
     
     ddt <- reactive({ DASHBOARD_DATETIME() })()
     
-    dropbox_data()[["teros12"]] ->
+    dropbox_data()[["teros12"]] |> 
+      filter(!is.na(value), !is.nan(value)) ->
       teros12
     
     if(nrow(teros12) > 0) {
@@ -299,7 +300,7 @@ server <- function(input, output, session) {
         theme(text = element_text(size = 18))
       
     } else {
-      b <- NO_DATA_GRAPH
+      NO_DATA_GRAPH
     }
   })
   
@@ -312,7 +313,8 @@ server <- function(input, output, session) {
     
     ddt <- reactive({ DASHBOARD_DATETIME() })()
     
-    dropbox_data()[["teros21"]] ->
+    dropbox_data()[["teros21"]] |> 
+      filter(!is.na(value), !is.nan(value)) ->
       teros21
     
     if(nrow(teros21) > 0) {
@@ -335,7 +337,7 @@ server <- function(input, output, session) {
         theme(text = element_text(size = 18))
       
     } else {
-      b <- NO_DATA_GRAPH
+      NO_DATA_GRAPH
     }
   })
   
@@ -346,7 +348,8 @@ server <- function(input, output, session) {
     
     ddt <- reactive({ DASHBOARD_DATETIME() })()
     
-    dropbox_data()[["troll600"]] ->
+    dropbox_data()[["troll600"]] |> 
+      filter(!is.na(value), !is.nan(value)) ->
       troll600
     
     if(nrow(troll600) > 0) {
@@ -366,7 +369,7 @@ server <- function(input, output, session) {
         theme(text = element_text(size = 18))
       
     } else {
-      b <- NO_DATA_GRAPH
+      NO_DATA_GRAPH
     }
     
   })
@@ -378,7 +381,8 @@ server <- function(input, output, session) {
     
     ddt <- reactive({ DASHBOARD_DATETIME() })()
     
-    dropbox_data()[["leveltroll"]] ->
+    dropbox_data()[["leveltroll"]] |> 
+      filter(!is.na(value), !is.nan(value)) ->
       leveltroll
     
     if(nrow(leveltroll) > 0) {
@@ -397,7 +401,7 @@ server <- function(input, output, session) {
         theme(text = element_text(size = 18))
       
     } else {
-      b <- NO_DATA_GRAPH
+      NO_DATA_GRAPH
     }
     
   })
