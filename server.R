@@ -397,7 +397,7 @@ server <- function(input, output, session) {
                   xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
                   ymin = -Inf, ymax = Inf) +
         geom_line(aes(Timestamp, value, color = Plot), na.rm = TRUE) +
-        xlab("") +
+        xlab("") + ylab("Water depth (based on 151 cm sensor height") +
         theme(text = element_text(size = 18))
       
     } else {
