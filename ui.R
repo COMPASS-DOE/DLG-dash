@@ -15,10 +15,13 @@ ui <- dashboardPage(
   
   skin = if_else(TESTING, "red-light",
                  "blue-light"),
-  dashboardHeader(
+  header = dashboardHeader(
     title = "DELUGE Dashboard"
   ),
-  dashboardSidebar(
+  footer = dashboardFooter(
+    left = textOutput("latest_data_download")
+  ),
+  sidebar = dashboardSidebar(
     sidebarMenu(
       menuItem("Dashboard", tabName = "dashboard", icon = icon("compass")),
       menuItem("TEROS12", tabName = "teros12", icon = icon("temperature-high")),
@@ -28,7 +31,7 @@ ui <- dashboardPage(
       #menuItem("Alerts", tabName = "alerts", icon = icon("comment-dots"))
     )
   ),
-  dashboardBody(
+  body = dashboardBody(
     tags$head(tags$style(".shiny-notification {position: fixed; top: 30% ;left: 50%; width: 300px")),
     tabItems(
       tabItem(

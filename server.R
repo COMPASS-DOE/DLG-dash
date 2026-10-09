@@ -6,7 +6,34 @@ source("flag_sensors.R")
 
 server <- function(input, output, session) {
   
-  dataInvalidate  <- reactiveTimer(15 * 60 * 1000) # 15 minutes
+  # If pulling from GitHub, we keep track of the latest preprocessor commit
+  # and only download when that changes
+  last_data_download <- reactiveValues(ldc = "--", ldt = "--")
+  
+  output$latest_data_download <- 
+    renderText(
+      paste("Latest data update: ", last_data_download$ldc, last_data_download$ldt)
+    )
+  
+  dataInvalidate  <- reactive({
+    
+    # Check if the Git commit of the preprocessor has changed
+    try(
+      commit <- system("git ls-remote https://github.com/COMPASS-DOE/sensor-data-preprocessor.git | head -n 1 | cut -c 1-7",
+                       intern = TRUE)
+    )
+    if(is.character(commit)) {
+      invalidate <- commit != last_data_download$ldc
+      last_data_download$ldc <- commit
+    } else {
+      warning("Couldn't contact GitHub")
+      invalidate <- FALSE
+    }
+    
+    return(invalidate)
+  })
+  
+  #dataInvalidate  <- reactiveTimer(15 * 60 * 1000) # 15 minutes
   alertInvalidate <- reactiveTimer(60 * 60 * 1000) # 60 minutes
   
   # ------------------ Check whether testing --------------------------
@@ -63,6 +90,8 @@ server <- function(input, output, session) {
       compasstools::recent_sensor_data("DLG", "LEVELTROLL") |> 
         compute_leveltroll(ddt) -> leveltroll_list
 
+      last_data_download$ldt <- Sys.time()
+      
     } else {
       stop("DATA_SOURCE ", DATA_SOURCE, " not supported")
     }
