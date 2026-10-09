@@ -103,7 +103,7 @@ ui <- dashboardPage(
       tabItem(
         tabName = "teros12",
         fluidRow(
-          plotOutput("teros_plot", width = "100%", height = "700px")
+          plotOutput("teros12_plot", width = "100%", height = "700px")
         )
       ),
       tabItem(

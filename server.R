@@ -174,7 +174,7 @@ server <- function(input, output, session) {
       dropbox_data()[["teros21"]] %>%
         rename(Timestamp = TIMESTAMP) |> 
         semi_join(tsensor_selected, 
-                  by = c("Logger", "Plot", "Sensor_ID", "Location", "variable", "depth_cm"))-> selected_data
+                  by = c("Logger", "Plot", "Sensor_ID", "Location", "variable", "depth_cm")) -> selected_data
       
       ggplot(selected_data, aes(Timestamp, value, group = interaction(Sensor_ID, variable, depth_cm))) +
         geom_line() +
@@ -269,28 +269,17 @@ server <- function(input, output, session) {
   
   # ------------------ TEROS12 tab ---------------------------
   
-  # Define a semi-transparent rectangle to indicate flood start/stop
-  # We have to use a geom_rect to accommodate the faceted TEROS plot
-  # Each plot passes the ymin and ymax (bc plotly won't do -Inf/Inf) to `...`
-  shaded_flood_rect <- function(...)
-    reactive({
-      geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
-                
-                aes(xmin = progress()$EVENT_START,
-                    xmax = Inf, ...))
-    })() # remove the reactive before returning
-  
-  output$teros_plot <- renderPlot({
+  output$teros12_plot <- renderPlot({
     # Average TEROS data by plot and 15 minute interval,
     # one facet per sensor (temperature, moisture, conductivity)
-    # This graph is shown when users click the "TEROS" tab on the dashboard
+    # This graph is shown when users click the "TEROS12" tab on the dashboard
     
     ddt <- reactive({ DASHBOARD_DATETIME() })()
     
     dropbox_data()[["teros12"]] ->
       teros12
     
-    if(nrow(teros12)) {
+    if(nrow(teros12) > 0) {
 
       teros12 %>%
         # Certain versions of plotly seem to have a bug and produce
@@ -302,8 +291,10 @@ server <- function(input, output, session) {
         left_join(TEROS12_RANGE, by = c("var" = "variable")) |> 
         ggplot() +
         facet_wrap(Logger ~ var, scales = "free", ncol = 3) +
-        shaded_flood_rect(ymin = -Inf, ymax = Inf) +
-        geom_line(aes(Timestamp, value, color = Plot)) +
+        geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
+                  xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
+                  ymin = -Inf, ymax = Inf) +
+        geom_line(aes(Timestamp, value, color = Plot), na.rm = TRUE) +
         xlab("") +
         theme(text = element_text(size = 18))
       
@@ -314,28 +305,17 @@ server <- function(input, output, session) {
   
   # ------------------ TEROS21 tab ---------------------------
   
-  # Define a semi-transparent rectangle to indicate flood start/stop
-  # We have to use a geom_rect to accommodate the faceted TEROS plot
-  # Each plot passes the ymin and ymax (bc plotly won't do -Inf/Inf) to `...`
-  shaded_flood_rect <- function(...)
-    reactive({
-      geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
-                
-                aes(xmin = progress()$EVENT_START,
-                    xmax = Inf, ...))
-    })() # remove the reactive before returning
-  
   output$teros21_plot <- renderPlot({
     # Average TEROS data by plot and 15 minute interval,
     # one facet per sensor (temperature, moisture, conductivity)
-    # This graph is shown when users click the "TEROS" tab on the dashboard
+    # This graph is shown when users click the "TEROS21" tab on the dashboard
     
     ddt <- reactive({ DASHBOARD_DATETIME() })()
     
     dropbox_data()[["teros21"]] ->
       teros21
     
-    if(nrow(teros21)) {
+    if(nrow(teros21) > 0) {
       
       teros21 %>%
         # Certain versions of plotly seem to have a bug and produce
@@ -347,8 +327,10 @@ server <- function(input, output, session) {
         left_join(TEROS21_RANGE, by = c("var" = "variable")) |> 
         ggplot() +
         facet_wrap(Logger ~ var, scales = "free", ncol = 3) +
-        shaded_flood_rect(ymin = -Inf, ymax = Inf) +
-        geom_line(aes(Timestamp, value, color = Plot)) +
+        geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
+                  xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
+                  ymin = -Inf, ymax = Inf) +
+        geom_line(aes(Timestamp, value, color = Plot), na.rm = TRUE) +
         xlab("") +
         theme(text = element_text(size = 18))
       
@@ -360,15 +342,14 @@ server <- function(input, output, session) {
   # ------------------ AquaTROLL tab ---------------------------
 
   output$aquatroll_plot <- renderPlot({
-    # AquaTroll data plot
-    # This graph is shown when users click the "Aquatroll" tab on the dashboard
+    # This graph is shown when users click the "AquaTROLL" tab on the dashboard
     
     ddt <- reactive({ DASHBOARD_DATETIME() })()
     
     dropbox_data()[["troll600"]] ->
       troll600
     
-    if(nrow(troll600)) {
+    if(nrow(troll600) > 0) {
 
       troll600 %>%
         # Certain versions of plotly seem to have a bug and produce
@@ -377,8 +358,10 @@ server <- function(input, output, session) {
         left_join(AQUATROLL_RANGE, by = c("var" = "variable")) |> 
         ggplot() +
         facet_wrap(Logger ~ var, scales = "free", ncol = 4) +
-        shaded_flood_rect(ymin = -Inf, ymax = Inf) +
-        geom_line(aes(Timestamp, value, color = Plot)) +
+        geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
+                  xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
+                  ymin = -Inf, ymax = Inf) +
+        geom_line(aes(Timestamp, value, color = Plot), na.rm = TRUE) +
         xlab("") +
         theme(text = element_text(size = 18))
       
@@ -391,14 +374,14 @@ server <- function(input, output, session) {
   # ------------------ LevelTROLL tab ---------------------------
   
   output$leveltroll_plot <- renderPlot({
-
+    # This graph is shown when users click the "LevelTROLL" tab on the dashboard
+    
     ddt <- reactive({ DASHBOARD_DATETIME() })()
     
     dropbox_data()[["leveltroll"]] ->
       leveltroll
     
-    if(nrow(leveltroll)) {
-      browser()
+    if(nrow(leveltroll) > 0) {
       leveltroll %>%
         # Certain versions of plotly seem to have a bug and produce
         # a tidyr::pivot error when there's a 'variable' column; rename
@@ -406,8 +389,10 @@ server <- function(input, output, session) {
         #left_join(LEVELTROLL_RANGE, by = c("var" = "variable")) |> 
         ggplot() +
         facet_wrap(Logger ~ Plot, scales = "free", ncol = 1) +
-        shaded_flood_rect(ymin = -Inf, ymax = Inf) +
-        geom_line(aes(Timestamp, value, color = Plot)) +
+        geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
+                  xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
+                  ymin = -Inf, ymax = Inf) +
+        geom_line(aes(Timestamp, value, color = Plot), na.rm = TRUE) +
         xlab("") +
         theme(text = element_text(size = 18))
       
@@ -450,17 +435,4 @@ server <- function(input, output, session) {
              icon = icon("wifi")
     )
   })
-  
-  # ------------------ Text alerts -----------------------------
-  #
-  #     observeEvent({
-  #         # This will calculate values and send out messages to everyone in "new_user" df
-  #         # could just have people not choose what they want alerts for?
-  #         #initial_alert()
-  #         alertInvalidate()
-  #     }, {
-  #         # send_alerts is defined in R/alerts_module.R
-  #         send_alerts(dropbox_data)
-  #     })
-  #
 }
