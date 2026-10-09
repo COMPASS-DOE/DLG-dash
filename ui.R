@@ -14,7 +14,7 @@ library(bslib)
 ui <- dashboardPage(
   
   skin = if_else(TESTING, "red-light",
-                 "midnight"),
+                 "blue-light"),
   dashboardHeader(
     title = "DELUGE Dashboard"
   ),
@@ -30,18 +30,6 @@ ui <- dashboardPage(
   ),
   dashboardBody(
     tags$head(tags$style(".shiny-notification {position: fixed; top: 30% ;left: 50%; width: 300px")),
-    # Add this custom CSS to force the data table elements to be white
-    tags$head(
-      tags$style(HTML("
-      .dataTables_wrapper, table.dataTable {
-        background-color: white !important;
-      }
-      .dataTables_wrapper table.dataTable th,
-      .dataTables_wrapper table.dataTable td {
-        background-color: white !important;
-      }
-    "))
-    ),
     tabItems(
       tabItem(
         tabName = "dashboard",
@@ -52,19 +40,16 @@ ui <- dashboardPage(
           textOutput("DDT"),
           
           # Front page badges; their attributes are computed by the server
-          valueBoxOutput("teros12_bdg", width = 2),
-          valueBoxOutput("teros21_bdg", width = 2),
-          valueBoxOutput("troll600_bdg", width = 2),
+          valueBoxOutput("teros12_bdg", width = 3),
+          valueBoxOutput("teros21_bdg", width = 3),
+          valueBoxOutput("troll600_bdg", width = 3),
+          valueBoxOutput("leveltroll_bdg", width = 3)
         ),
         fluidRow(
           # Gear UI is defined in R/gear_module.R
           column(1, 
                  gearUI("gear")),
           column(5,
-                 # progress_circle(value = 0, shiny_id = "circle",
-                 #                 color = "#00B0CA", stroke_width = 15,
-                 #                 trail_color = "#BBE7E6"),
-                 # tags$h3("Flood Progress", align = "center")
                  shinydashboardPlus::box(
                    title = "Flood Stats",
                    width = 12,
@@ -85,6 +70,10 @@ ui <- dashboardPage(
                         tabPanel(
                           title = "AquaTroll",
                           dataTableOutput("troll600_bad_sensors_table")
+                        ),
+                        tabPanel(
+                          title = "LevelTROLL",
+                          dataTableOutput("leveltroll_bad_sensors_table")
                         )
                  )
           )
@@ -101,7 +90,12 @@ ui <- dashboardPage(
                  ),
                  tabPanel(
                    title = "AquaTroll",
-                   plotlyOutput("bad_troll600_plot", height = "400px")
+                   plotOutput("bad_troll600_plot", height = "400px")
+                 ),
+                 tabPanel(
+                   title = "LevelTROLL",
+                   plotOutput("bad_leveltroll_plot", height = "400px")
+                   
                  )
           )
         )
@@ -122,6 +116,12 @@ ui <- dashboardPage(
         tabName = "aquatroll",
         fluidRow(
           plotOutput("aquatroll_plot", width = "100%", height = "700px")
+        )
+      ),
+      tabItem(
+        tabName = "leveltroll",
+        fluidRow(
+          plotOutput("leveltroll_plot", width = "100%", height = "700px")
         )
       )
       # Alerts tab UI is defined in R/alerts_module.R

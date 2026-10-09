@@ -136,3 +136,31 @@ compute_aquatroll <- function(troll600, ddt) {
   
 }
 
+compute_leveltroll <- function(leveltroll, ddt) {
+
+  leveltroll |> 
+    filter(research_name == "distance-to-surface") |> 
+    mutate(value = value - 150) |> 
+    rename(variable = research_name) -> leveltroll_full
+  
+  leveltroll_full |> 
+    filter_recent_timestamps(FLAG_TIME_WINDOW, ddt) -> leveltroll_filtered
+    
+  leveltroll_filtered |> 
+    summarise(flag_sensors(value, limits = LEVELTROLL_RANGE)) -> leveltroll_bdg
+  
+  leveltroll_filtered %>%
+    mutate(bad_sensor = which_outside_limits(value,
+                                             left_limit = LEVELTROLL_RANGE[1],
+                                             right_limit = LEVELTROLL_RANGE[2])) %>%
+    filter(bad_sensor) %>%
+    select(Plot, Logger) %>%
+    distinct(Logger, .keep_all = TRUE) ->
+    leveltroll_bad_sensors
+  
+  list(leveltroll = leveltroll_full,
+       leveltroll_bdg = leveltroll_bdg,
+       leveltroll_bad_sensors = leveltroll_bad_sensors)
+  
+}
+

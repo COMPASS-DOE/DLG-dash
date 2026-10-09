@@ -49,7 +49,7 @@ server <- function(input, output, session) {
       #ADD TESTING DATA
       
     } else if(DATA_SOURCE == "github"){
-      
+
       read_parquet("https://github.com/COMPASS-DOE/sensor-data-preprocessor/blob/main/processed_data/DLG_TEROS12.parquet?raw=true") |> 
         compute_teros12(ddt) -> teros12_list
       
@@ -59,11 +59,14 @@ server <- function(input, output, session) {
       read_parquet("https://github.com/COMPASS-DOE/sensor-data-preprocessor/blob/main/processed_data/DLG_AQUATROLL600.parquet?raw=true") |> 
         compute_aquatroll(ddt) -> aquatroll_list
       
+      read_parquet("https://github.com/COMPASS-DOE/sensor-data-preprocessor/blob/main/processed_data/DLG_LEVELTROLL.parquet?raw=true") |> 
+        compute_leveltroll(ddt) -> leveltroll_list
+
     }
     
     # Do limits testing and compute data needed for badges
     # compute_sapflow() etc. are defined in R/data_processing.R
-    c(teros12_list, teros21_list, aquatroll_list)
+    c(teros12_list, teros21_list, aquatroll_list, leveltroll_list)
   })
   
   # ------------------ Gear and progress circle --------------------------
@@ -80,7 +83,7 @@ server <- function(input, output, session) {
       end   <- reactive({ DASHBOARD_DATETIME() })()
 
       mins <- floor(as.numeric(end - start, units = "mins"))
-      sprintf("%d hours and %d minutes", mins %/% 60, mins %% 60)
+      sprintf(" DELUGE has been flooding for %d hours and %d minutes", mins %/% 60, mins %% 60)
       
       # difftime(reactive({ DASHBOARD_DATETIME() })(),
       #          progress()$EVENT_START,
@@ -108,6 +111,11 @@ server <- function(input, output, session) {
   output$troll600_bad_sensors_table <- DT::renderDataTable({
       dropbox_data()[["troll600_bad_sensors"]] %>%
           datatable(options = list(searching = FALSE, pageLength = 5))
+  })
+  
+  output$leveltroll_bad_sensors_table <- DT::renderDataTable({
+    dropbox_data()[["leveltroll_bad_sensors"]] %>%
+      datatable(options = list(searching = FALSE, pageLength = 5))
   })
   
   # ------------------ Main dashboard bad sensor graphs  -----------------------
@@ -202,6 +210,40 @@ server <- function(input, output, session) {
         rename(Timestamp = TIMESTAMP) |> 
         semi_join(tsensor_selected, 
                   by = c("Logger", "Plot", "variable", "Instrument"))-> selected_data
+      
+      ggplot(selected_data, aes(Timestamp, value, group = variable)) +
+        geom_line() +
+        xlab("") -> b #+
+      
+      # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
+      # Try to assign color intelligently. If different plots are selected,
+      # have that be the color; otherwise by depth; otherwise by ID
+      if(length(unique(selected_data$Plot)) > 1) {
+        b <- b + aes(color = Plot)
+      } else if(length(unique(selected_data$variable)) > 1) {
+        b <- b + aes(color = variable)
+      }
+      
+    } else {
+      b <- NO_DATA_GRAPH
+    }
+    b
+  })
+  
+  output$bad_leveltroll_plot <- renderPlot({
+    
+    if(length(input$leveltroll_bad_sensors_table_rows_selected)) {
+      
+      ddt <- reactive({ DASHBOARD_DATETIME() })()
+      
+      dropbox_data()[["leveltroll_bad_sensors"]] %>%
+        slice(input$leveltroll_bad_sensors_table_rows_selected) ->
+        tsensor_selected
+
+      dropbox_data()[["leveltroll"]] %>%
+        rename(Timestamp = TIMESTAMP) |> 
+        semi_join(tsensor_selected, 
+                  by = c("Logger", "Plot"))-> selected_data
       
       ggplot(selected_data, aes(Timestamp, value, group = variable)) +
         geom_line() +
@@ -343,6 +385,35 @@ server <- function(input, output, session) {
     
   })
   
+  # ------------------ LevelTROLL tab ---------------------------
+  
+  output$leveltroll_plot <- renderPlot({
+
+    ddt <- reactive({ DASHBOARD_DATETIME() })()
+    
+    dropbox_data()[["leveltroll"]] ->
+      leveltroll
+    
+    if(nrow(leveltroll)) {
+      browser()
+      leveltroll %>%
+        # Certain versions of plotly seem to have a bug and produce
+        # a tidyr::pivot error when there's a 'variable' column; rename
+        rename(var = variable, Timestamp = TIMESTAMP) %>%
+        #left_join(LEVELTROLL_RANGE, by = c("var" = "variable")) |> 
+        ggplot() +
+        facet_wrap(Logger ~ Plot, scales = "free", ncol = 1) +
+        shaded_flood_rect(ymin = -Inf, ymax = Inf) +
+        geom_line(aes(Timestamp, value, color = Plot)) +
+        xlab("") +
+        theme(text = element_text(size = 18))
+      
+    } else {
+      b <- NO_DATA_GRAPH
+    }
+    
+  })
+  
   # ------------------ Dashboard badges -----------------------------
   
   output$teros12_bdg <- renderValueBox({
@@ -353,11 +424,27 @@ server <- function(input, output, session) {
     )
   })
   
+  output$teros21_bdg <- renderValueBox({
+    valueBox(dropbox_data()[["teros21_bdg"]]$percent_in[1],
+             "TEROS21",
+             color = dropbox_data()[["teros21_bdg"]]$color[1],
+             icon = icon("worm")
+    )
+  })
+  
   output$troll600_bdg <- renderValueBox({
     valueBox(dropbox_data()[["troll600_bdg"]]$percent_in[1],
              "AquaTroll",
              color = dropbox_data()[["troll600_bdg"]]$color[1],
              icon = icon("water")
+    )
+  })
+  
+  output$leveltroll_bdg <- renderValueBox({
+    valueBox(dropbox_data()[["leveltroll_bdg"]]$percent_in[1],
+             "LevelTROLL",
+             color = dropbox_data()[["leveltroll_bdg"]]$color[1],
+             icon = icon("wifi")
     )
   })
   

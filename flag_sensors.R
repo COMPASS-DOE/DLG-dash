@@ -32,6 +32,8 @@ DO_RANGE <- c(-5, 120)
 
 REDOX_RANGE <- c(-2500, 2500)
 
+LEVELTROLL_RANGE <- c(0, 500)
+
 # Badge colors and 'trigger' values
 # Currently green-yellow-red; could have more colors if desired
 BADGE_COLORS <- c("green" = 0.0,    # green starts at 0% fail (this shouldn't change)
