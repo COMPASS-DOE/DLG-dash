@@ -139,8 +139,15 @@ compute_aquatroll <- function(troll600, ddt) {
 compute_leveltroll <- function(leveltroll, ddt) {
 
   leveltroll |> 
-    filter(research_name == "distance-to-surface") |> 
-    mutate(value = value - 150) |> 
+    filter(research_name == "distance-to-surface") |>
+    # A small number of leveltroll values in F3 are zero, implying that
+    # water is right up to the sensor. This can't be right; presumably
+    # there's vegetation or something in the way. Remove
+    filter(value > 0) |> 
+    # BBL: I summarised the leveltroll data and the largest value is 151,
+    # so for now let's assume that all sensors are mounted at that height
+    # TODO: later we should get precise plot-specific measurements
+    mutate(value = LEVELTROLL_RANGE[2] - value) |> 
     rename(variable = research_name) -> leveltroll_full
   
   leveltroll_full |> 
