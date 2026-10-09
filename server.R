@@ -2,6 +2,7 @@
 # June 2023
 
 source("global.R")
+source("flag_sensors.R")
 
 server <- function(input, output, session) {
   
@@ -50,18 +51,20 @@ server <- function(input, output, session) {
       
     } else if(DATA_SOURCE == "github"){
 
-      read_parquet("https://github.com/COMPASS-DOE/sensor-data-preprocessor/blob/main/processed_data/DLG_TEROS12.parquet?raw=true") |> 
+      compasstools::recent_sensor_data("DLG", "TEROS12") |> 
         compute_teros12(ddt) -> teros12_list
       
-      read_parquet("https://github.com/COMPASS-DOE/sensor-data-preprocessor/blob/main/processed_data/DLG_TEROS21.parquet?raw=true") |> 
+      compasstools::recent_sensor_data("DLG", "TEROS21") |> 
         compute_teros21(ddt) -> teros21_list
       
-      read_parquet("https://github.com/COMPASS-DOE/sensor-data-preprocessor/blob/main/processed_data/DLG_AQUATROLL600.parquet?raw=true") |> 
+      compasstools::recent_sensor_data("DLG", "AQUATROLL600") |> 
         compute_aquatroll(ddt) -> aquatroll_list
       
-      read_parquet("https://github.com/COMPASS-DOE/sensor-data-preprocessor/blob/main/processed_data/DLG_LEVELTROLL.parquet?raw=true") |> 
+      compasstools::recent_sensor_data("DLG", "LEVELTROLL") |> 
         compute_leveltroll(ddt) -> leveltroll_list
 
+    } else {
+      stop("DATA_SOURCE ", DATA_SOURCE, " not supported")
     }
     
     # Do limits testing and compute data needed for badges

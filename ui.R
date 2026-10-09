@@ -23,7 +23,7 @@ ui <- dashboardPage(
       menuItem("Dashboard", tabName = "dashboard", icon = icon("compass")),
       menuItem("TEROS12", tabName = "teros12", icon = icon("temperature-high")),
       menuItem("TEROS21", tabName = "teros21", icon = icon("worm")),
-      menuItem("Aquatroll", tabName = "aquatroll", icon = icon("water")),
+      menuItem("AquaTROLL", tabName = "aquatroll", icon = icon("water")),
       menuItem("LevelTROLL", tabName = "leveltroll", icon = icon("wifi"))
       #menuItem("Alerts", tabName = "alerts", icon = icon("comment-dots"))
     )

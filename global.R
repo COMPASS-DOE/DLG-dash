@@ -19,7 +19,6 @@ library(tidyr)
 if(!require("compasstools")) {
     stop("Need to devtools::install_github('COMPASS-DOE/compasstools@bypass-dropdir')")
 }
-library(compasstools)
 
 # The TESTING flag causes the server to load static data in offline-data/
 # When writing new code or debugging, it's often useful to set this to TRUE
