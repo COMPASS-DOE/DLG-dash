@@ -77,21 +77,28 @@ server <- function(input, output, session) {
       
     } else if(DATA_SOURCE == "github"){
       
-      compasstools::recent_sensor_data("DLG", "TEROS12") |> 
-        compute_teros12(ddt) -> 
-        teros12_list
-      
-      compasstools::recent_sensor_data("DLG", "TEROS21") |> 
-        compute_teros21(ddt) -> 
-        teros21_list
-      
-      compasstools::recent_sensor_data("DLG", "AQUATROLL600") |> 
-        compute_aquatroll(ddt) -> 
-        aquatroll_list
-      
-      compasstools::recent_sensor_data("DLG", "LEVELTROLL") |> 
-        compute_leveltroll(ddt) -> 
-        leveltroll_list
+      withProgress({
+        setProgress(1, message = "Downloading TEROS12")
+        compasstools::recent_sensor_data("DLG", "TEROS12") |> 
+          compute_teros12(ddt) -> 
+          teros12_list
+        
+        setProgress(2, message = "Downloading TEROS21")
+        compasstools::recent_sensor_data("DLG", "TEROS21") |> 
+          compute_teros21(ddt) -> 
+          teros21_list
+        
+        setProgress(3, message = "Downloading AQUATROLL600")
+        compasstools::recent_sensor_data("DLG", "AQUATROLL600") |> 
+          compute_aquatroll(ddt) -> 
+          aquatroll_list
+        
+        setProgress(4, message = "Downloading LEVELTROLL")
+        compasstools::recent_sensor_data("DLG", "LEVELTROLL") |> 
+          compute_leveltroll(ddt) -> 
+          leveltroll_list
+      }, min = 0, max = 5)
+
       
       last_data_download$ldt <- Sys.time()
       

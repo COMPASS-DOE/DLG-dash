@@ -8,12 +8,6 @@ library(shiny)
 library(DT)
 library(readr)
 library(lubridate)
-library(rdrop2refreshtoken)
-library(shinybusy)
-library(plotly)
-library(janitor)
-library(arrow)
-library(cowplot)
 library(tidyr)
 
 if(!require("compasstools")) {
