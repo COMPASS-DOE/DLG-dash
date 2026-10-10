@@ -20,7 +20,7 @@ compute_teros12 <- function(teros12, ddt) {
       into = c("variable", "depth_cm"),
       regex = "^[^-]+-(.*)-([0-9]+)cm$",
       convert = TRUE, remove = FALSE) -> teros12_full
-
+  
   teros12_full |> 
     filter_recent_timestamps(FLAG_TIME_WINDOW, ddt) %>%
     left_join(TEROS12_RANGE, by = "variable") -> teros_filtered
@@ -103,7 +103,7 @@ compute_aquatroll <- function(troll600, ddt) {
       convert = TRUE, remove = FALSE) |> 
     filter(variable %in% c("temperature", "salinity", "density", "rdo-conc")) -> 
     troll600_full
-
+  
   troll600_full |> 
     filter_recent_timestamps(FLAG_TIME_WINDOW, ddt) %>%
     left_join(AQUATROLL_RANGE, by = "variable") -> 
@@ -137,7 +137,7 @@ compute_aquatroll <- function(troll600, ddt) {
 }
 
 compute_leveltroll <- function(leveltroll, ddt) {
-
+  
   leveltroll |> 
     filter(research_name == "distance-to-surface") |>
     # A small number of leveltroll values in F3 are zero, implying that
@@ -158,11 +158,12 @@ compute_leveltroll <- function(leveltroll, ddt) {
   leveltroll_filtered |> 
     summarise(flag_sensors(value, limits = LEVELTROLL_RANGE)) -> 
     leveltroll_bdg
-
+  
   leveltroll_filtered %>%
-    mutate(bad_sensor = which_outside_limits(value,
-                                             left_limit = LEVELTROLL_RANGE[1],
-                                             right_limit = LEVELTROLL_RANGE[2])) %>%
+    mutate(bad_sensor = 
+             which_outside_limits(value,
+                                  left_limit = LEVELTROLL_RANGE[1],
+                                  right_limit = LEVELTROLL_RANGE[2])) %>%
     filter(bad_sensor) %>%
     select(Plot, Logger) %>%
     distinct(Logger, .keep_all = TRUE) ->
