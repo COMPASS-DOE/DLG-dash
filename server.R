@@ -1,5 +1,5 @@
-# Server code for the TEMPEST data dashboard
-# June 2023
+# User interface code for the DELUGE data dashboard
+# Stephanie Pennington October 2026
 
 source("global.R")
 source("flag_sensors.R")
@@ -16,9 +16,10 @@ server <- function(input, output, session) {
              format(last_data_download$ldt, format = "%Y-%m-%d %H:%M:%S %Z"),
              " (commit ", last_data_download$ldc, ")")
     )
+ 
+  # ------------------ Data invalidation --------------------------
   
   dataInvalidate  <- reactive({
-    
     # Check if the Git commit of the preprocessor has changed
     try(
       commit <- system("git ls-remote https://github.com/COMPASS-DOE/sensor-data-preprocessor.git | head -n 1 | cut -c 1-7",
@@ -34,9 +35,6 @@ server <- function(input, output, session) {
     
     return(invalidate)
   })
-  
-  #dataInvalidate  <- reactiveTimer(15 * 60 * 1000) # 15 minutes
-  alertInvalidate <- reactiveTimer(60 * 60 * 1000) # 60 minutes
   
   # ------------------ Check whether testing --------------------------
   
@@ -81,16 +79,20 @@ server <- function(input, output, session) {
     } else if(DATA_SOURCE == "github"){
       
       compasstools::recent_sensor_data("DLG", "TEROS12") |> 
-        compute_teros12(ddt) -> teros12_list
+        compute_teros12(ddt) -> 
+        teros12_list
       
       compasstools::recent_sensor_data("DLG", "TEROS21") |> 
-        compute_teros21(ddt) -> teros21_list
+        compute_teros21(ddt) -> 
+        teros21_list
       
       compasstools::recent_sensor_data("DLG", "AQUATROLL600") |> 
-        compute_aquatroll(ddt) -> aquatroll_list
+        compute_aquatroll(ddt) -> 
+        aquatroll_list
       
       compasstools::recent_sensor_data("DLG", "LEVELTROLL") |> 
-        compute_leveltroll(ddt) -> leveltroll_list
+        compute_leveltroll(ddt) -> 
+        leveltroll_list
       
       last_data_download$ldt <- Sys.time()
       
@@ -128,7 +130,6 @@ server <- function(input, output, session) {
     ignoreInit = FALSE)
   
   output$elapsed <- renderText(time_elapsed())
-  
   
   # ------------------ Main dashboard bad sensor tables --------------------
   
@@ -187,7 +188,7 @@ server <- function(input, output, session) {
           p <- p + aes(color = Sensor_ID)
         }
       })
-      if(!is.ggplot(p)) p <- ERROR_GRAPH
+      if(!is_ggplot(p)) p <- ERROR_GRAPH
       
     } else {
       p <- NO_DATA_GRAPH
@@ -228,7 +229,7 @@ server <- function(input, output, session) {
           b <- b + aes(color = Sensor_ID)
         }
       })
-      if(!is.ggplot(p)) p <- ERROR_GRAPH
+      if(!is_ggplot(p)) p <- ERROR_GRAPH
     } else {
       p <- NO_DATA_GRAPH
     }
@@ -265,7 +266,7 @@ server <- function(input, output, session) {
           b <- b + aes(color = variable)
         }
       })
-      if(!is.ggplot(p)) p <- ERROR_GRAPH
+      if(!is_ggplot(p)) p <- ERROR_GRAPH
     } else {
       p <- NO_DATA_GRAPH
     }
@@ -301,7 +302,7 @@ server <- function(input, output, session) {
           b <- b + aes(color = variable)
         }
       })
-      if(!is.ggplot(p)) p <- ERROR_GRAPH
+      if(!is_ggplot(p)) p <- ERROR_GRAPH
     } else {
       p <- NO_DATA_GRAPH
     }
@@ -334,7 +335,7 @@ server <- function(input, output, session) {
           xlab("") +
           theme(text = element_text(size = 18))
       })
-      if(!is.ggplot(p)) p <- ERROR_GRAPH
+      if(!is_ggplot(p)) p <- ERROR_GRAPH
     } else {
       p <- NO_DATA_GRAPH
     }
@@ -367,7 +368,7 @@ server <- function(input, output, session) {
           xlab("") +
           theme(text = element_text(size = 18))
       })
-      if(!is.ggplot(p)) p <- ERROR_GRAPH
+      if(!is_ggplot(p)) p <- ERROR_GRAPH
     } else {
       p <- NO_DATA_GRAPH
     }
@@ -395,7 +396,7 @@ server <- function(input, output, session) {
           xlab("") +
           theme(text = element_text(size = 18))
       })
-      if(!is.ggplot(p)) p <- ERROR_GRAPH
+      if(!is_ggplot(p)) p <- ERROR_GRAPH
     } else {
       p <- NO_DATA_GRAPH
     }
@@ -423,7 +424,7 @@ server <- function(input, output, session) {
           xlab("") + ylab("Water depth (based on 151 cm sensor height") +
           theme(text = element_text(size = 18))
       })
-      if(!is.ggplot(p)) p <- ERROR_GRAPH
+      if(!is_ggplot(p)) p <- ERROR_GRAPH
     } else {
       p <- NO_DATA_GRAPH
     }

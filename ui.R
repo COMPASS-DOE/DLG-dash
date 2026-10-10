@@ -1,5 +1,5 @@
-# User interface code for the TEMPEST data dashboard
-# June 2023
+# User interface code for the DELUGE data dashboard
+# Stephanie Pennington October 2026
 
 library(shiny)
 library(shinydashboard)
@@ -15,6 +15,7 @@ ui <- dashboardPage(
   
   skin = if_else(TESTING, "red-light",
                  "blue-light"),
+  # Header, footer, sidebar ####
   header = dashboardHeader(
     title = "DELUGE Dashboard"
   ),
@@ -31,6 +32,7 @@ ui <- dashboardPage(
       #menuItem("Alerts", tabName = "alerts", icon = icon("comment-dots"))
     )
   ),
+  # Body ####
   body = dashboardBody(
     tags$head(tags$style(".shiny-notification {position: fixed; top: 30% ;left: 50%; width: 300px")),
     tabItems(
@@ -42,7 +44,8 @@ ui <- dashboardPage(
           # of the offline data
           textOutput("DDT"),
           
-          # Front page badges; their attributes are computed by the server
+          # Front page badges ----
+          # their attributes are computed by the server
           valueBoxOutput("teros12_bdg", width = 3),
           valueBoxOutput("teros21_bdg", width = 3),
           valueBoxOutput("troll600_bdg", width = 3),
@@ -81,6 +84,7 @@ ui <- dashboardPage(
                  )
           )
         ),
+        # Data plots ----
         fluidRow(
           tabBox(width = 12,
                  tabPanel(

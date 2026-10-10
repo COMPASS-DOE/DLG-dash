@@ -1,5 +1,4 @@
-# Data processing functions for DLG dashboard
-# Adapted from functions written by Ben Bond-Lamberty for TEMPEST dashboard
+# Data processing functions for the DELUGE data dashboard
 # Created 2026-10-07 by Stephanie Pennington | stephanie.pennington@pnnl.gov
 
 # Utility function used throughout the code: filter a dataset to a recent
@@ -12,6 +11,10 @@ filter_recent_timestamps <- function(x, window, ddt) {
     filter(Timestamp > ddt - window * 60 * 60, Timestamp <= ddt)
 }
 
+# The compute functions below are called immediately after reading
+# in data from compasstools::recent_sensor_data()
+# They compute the status badge and bad-sensor information
+
 compute_teros12 <- function(teros12, ddt) {
   
   teros12 |> 
@@ -19,11 +22,13 @@ compute_teros12 <- function(teros12, ddt) {
       research_name,
       into = c("variable", "depth_cm"),
       regex = "^[^-]+-(.*)-([0-9]+)cm$",
-      convert = TRUE, remove = FALSE) -> teros12_full
+      convert = TRUE, remove = FALSE) -> 
+    teros12_full
   
   teros12_full |> 
     filter_recent_timestamps(FLAG_TIME_WINDOW, ddt) %>%
-    left_join(TEROS12_RANGE, by = "variable") -> teros_filtered
+    left_join(TEROS12_RANGE, by = "variable") -> 
+    teros_filtered
   
   teros_filtered %>%
     group_by(variable) %>%
