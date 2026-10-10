@@ -1,5 +1,4 @@
-# Data processing functions for DLG dashboard
-# Adapted from functions written by Ben Bond-Lamberty for TEMPEST dashboard
+# Data processing functions for the DELUGE data dashboard
 # Created 2026-10-07 by Stephanie Pennington | stephanie.pennington@pnnl.gov
 
 # Utility function used throughout the code: filter a dataset to a recent
@@ -12,6 +11,10 @@ filter_recent_timestamps <- function(x, window, ddt) {
     filter(Timestamp > ddt - window * 60 * 60, Timestamp <= ddt)
 }
 
+# The compute functions below are called immediately after reading
+# in data from compasstools::recent_sensor_data()
+# They compute the status badge and bad-sensor information
+
 compute_teros12 <- function(teros12, ddt) {
   
   teros12 |> 
@@ -19,11 +22,13 @@ compute_teros12 <- function(teros12, ddt) {
       research_name,
       into = c("variable", "depth_cm"),
       regex = "^[^-]+-(.*)-([0-9]+)cm$",
-      convert = TRUE, remove = FALSE) -> teros12_full
-
+      convert = TRUE, remove = FALSE) -> 
+    teros12_full
+  
   teros12_full |> 
     filter_recent_timestamps(FLAG_TIME_WINDOW, ddt) %>%
-    left_join(TEROS12_RANGE, by = "variable") -> teros_filtered
+    left_join(TEROS12_RANGE, by = "variable") -> 
+    teros_filtered
   
   teros_filtered %>%
     group_by(variable) %>%
@@ -51,7 +56,6 @@ compute_teros12 <- function(teros12, ddt) {
   list(teros12 = teros12_full,
        teros12_bdg = teros12_bdg,
        teros12_bad_sensors = teros12_bad_sensors)
-  
 }
 
 compute_teros21 <- function(teros21, ddt) {
@@ -102,11 +106,13 @@ compute_aquatroll <- function(troll600, ddt) {
       into = c("variable"),
       regex = "^gw-(.*)$",
       convert = TRUE, remove = FALSE) |> 
-    filter(variable %in% c("temperature", "salinity", "density", "rdo-conc")) -> troll600_full
-
+    filter(variable %in% c("temperature", "salinity", "density", "rdo-conc")) -> 
+    troll600_full
+  
   troll600_full |> 
     filter_recent_timestamps(FLAG_TIME_WINDOW, ddt) %>%
-    left_join(AQUATROLL_RANGE, by = "variable") -> troll600_filtered
+    left_join(AQUATROLL_RANGE, by = "variable") -> 
+    troll600_filtered
   
   troll600_filtered |> 
     group_by(variable) %>%
@@ -133,26 +139,36 @@ compute_aquatroll <- function(troll600, ddt) {
   list(troll600 = troll600_full,
        troll600_bdg = troll600_bdg,
        troll600_bad_sensors = troll600_bad_sensors)
-  
 }
 
 compute_leveltroll <- function(leveltroll, ddt) {
-
+  
   leveltroll |> 
-    filter(research_name == "distance-to-surface") |> 
-    mutate(value = value - 150) |> 
-    rename(variable = research_name) -> leveltroll_full
+    filter(research_name == "distance-to-surface") |>
+    # A small number of leveltroll values in F3 are zero, implying that
+    # water is right up to the sensor. This can't be right; presumably
+    # there's vegetation or something in the way. Remove
+    filter(!is.finite(value) | value > 0) |> 
+    # BBL: I summarized the leveltroll data and the largest value is 151,
+    # so for now let's assume that all sensors are mounted at that height
+    # TODO: later we should get precise plot-specific measurements
+    mutate(value = LEVELTROLL_RANGE[2] - value) |> 
+    rename(variable = research_name) ->
+    leveltroll_full
   
   leveltroll_full |> 
-    filter_recent_timestamps(FLAG_TIME_WINDOW, ddt) -> leveltroll_filtered
-    
+    filter_recent_timestamps(FLAG_TIME_WINDOW, ddt) ->
+    leveltroll_filtered
+  
   leveltroll_filtered |> 
-    summarise(flag_sensors(value, limits = LEVELTROLL_RANGE)) -> leveltroll_bdg
+    summarise(flag_sensors(value, limits = LEVELTROLL_RANGE)) -> 
+    leveltroll_bdg
   
   leveltroll_filtered %>%
-    mutate(bad_sensor = which_outside_limits(value,
-                                             left_limit = LEVELTROLL_RANGE[1],
-                                             right_limit = LEVELTROLL_RANGE[2])) %>%
+    mutate(bad_sensor = 
+             which_outside_limits(value,
+                                  left_limit = LEVELTROLL_RANGE[1],
+                                  right_limit = LEVELTROLL_RANGE[2])) %>%
     filter(bad_sensor) %>%
     select(Plot, Logger) %>%
     distinct(Logger, .keep_all = TRUE) ->
@@ -161,6 +177,4 @@ compute_leveltroll <- function(leveltroll, ddt) {
   list(leveltroll = leveltroll_full,
        leveltroll_bdg = leveltroll_bdg,
        leveltroll_bad_sensors = leveltroll_bad_sensors)
-  
 }
-

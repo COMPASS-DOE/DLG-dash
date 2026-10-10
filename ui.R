@@ -1,5 +1,5 @@
-# User interface code for the TEMPEST data dashboard
-# June 2023
+# User interface code for the DELUGE data dashboard
+# Stephanie Pennington October 2026
 
 library(shiny)
 library(shinydashboard)
@@ -15,20 +15,25 @@ ui <- dashboardPage(
   
   skin = if_else(TESTING, "red-light",
                  "blue-light"),
-  dashboardHeader(
+  # Header, footer, sidebar ####
+  header = dashboardHeader(
     title = "DELUGE Dashboard"
   ),
-  dashboardSidebar(
+  footer = dashboardFooter(
+    left = textOutput("latest_data_download")
+  ),
+  sidebar = dashboardSidebar(
     sidebarMenu(
       menuItem("Dashboard", tabName = "dashboard", icon = icon("compass")),
       menuItem("TEROS12", tabName = "teros12", icon = icon("temperature-high")),
       menuItem("TEROS21", tabName = "teros21", icon = icon("worm")),
-      menuItem("Aquatroll", tabName = "aquatroll", icon = icon("water")),
+      menuItem("AquaTROLL", tabName = "aquatroll", icon = icon("water")),
       menuItem("LevelTROLL", tabName = "leveltroll", icon = icon("wifi"))
       #menuItem("Alerts", tabName = "alerts", icon = icon("comment-dots"))
     )
   ),
-  dashboardBody(
+  # Body ####
+  body = dashboardBody(
     tags$head(tags$style(".shiny-notification {position: fixed; top: 30% ;left: 50%; width: 300px")),
     tabItems(
       tabItem(
@@ -39,7 +44,8 @@ ui <- dashboardPage(
           # of the offline data
           textOutput("DDT"),
           
-          # Front page badges; their attributes are computed by the server
+          # Front page badges ----
+          # their attributes are computed by the server
           valueBoxOutput("teros12_bdg", width = 3),
           valueBoxOutput("teros21_bdg", width = 3),
           valueBoxOutput("troll600_bdg", width = 3),
@@ -78,6 +84,7 @@ ui <- dashboardPage(
                  )
           )
         ),
+        # Data plots ----
         fluidRow(
           tabBox(width = 12,
                  tabPanel(
@@ -103,7 +110,7 @@ ui <- dashboardPage(
       tabItem(
         tabName = "teros12",
         fluidRow(
-          plotOutput("teros_plot", width = "100%", height = "700px")
+          plotOutput("teros12_plot", width = "100%", height = "700px")
         )
       ),
       tabItem(
