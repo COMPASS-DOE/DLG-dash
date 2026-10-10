@@ -46,7 +46,7 @@ server <- function(input, output, session) {
   TESTING <<- TESTING || Sys.getenv("CI") == "true"
   
   # ------------------ Read in sensor data -----------------------------
-
+  
   # DASHBOARD_DATETIME is the datetime that the dashboard is showing
   # Normally this is just now (i.e., Sys.time()), but when testing
   # it will be the latest date of the static testing data
@@ -77,7 +77,7 @@ server <- function(input, output, session) {
       #ADD TESTING DATA
       
     } else if(DATA_SOURCE == "github"){
-
+      
       compasstools::recent_sensor_data("DLG", "TEROS12") |> 
         compute_teros12(ddt) -> teros12_list
       
@@ -89,7 +89,7 @@ server <- function(input, output, session) {
       
       compasstools::recent_sensor_data("DLG", "LEVELTROLL") |> 
         compute_leveltroll(ddt) -> leveltroll_list
-
+      
       last_data_download$ldt <- Sys.time()
       
     } else {
@@ -113,7 +113,7 @@ server <- function(input, output, session) {
     {
       start <- progress()$EVENT_START
       end   <- reactive({ DASHBOARD_DATETIME() })()
-
+      
       mins <- floor(as.numeric(end - start, units = "mins"))
       sprintf(" DELUGE has been flooding for %d hours and %d minutes", mins %/% 60, mins %% 60)
       
@@ -129,10 +129,10 @@ server <- function(input, output, session) {
   
   
   # ------------------ Main dashboard bad sensor tables --------------------
-
+  
   output$teros12_bad_sensors_table <- DT::renderDataTable({
-      dropbox_data()[["teros12_bad_sensors"]] %>%
-          datatable(options = list(searching = FALSE, pageLength = 5))
+    dropbox_data()[["teros12_bad_sensors"]] %>%
+      datatable(options = list(searching = FALSE, pageLength = 5))
   })
   
   output$teros21_bad_sensors_table <- DT::renderDataTable({
@@ -141,8 +141,8 @@ server <- function(input, output, session) {
   })
   
   output$troll600_bad_sensors_table <- DT::renderDataTable({
-      dropbox_data()[["troll600_bad_sensors"]] %>%
-          datatable(options = list(searching = FALSE, pageLength = 5))
+    dropbox_data()[["troll600_bad_sensors"]] %>%
+      datatable(options = list(searching = FALSE, pageLength = 5))
   })
   
   output$leveltroll_bad_sensors_table <- DT::renderDataTable({
@@ -167,27 +167,30 @@ server <- function(input, output, session) {
         semi_join(tsensor_selected, 
                   by = c("Logger", "Plot", "Sensor_ID", "Location", "variable", "depth_cm"))-> selected_data
       
-      ggplot(selected_data, aes(Timestamp, value, group = interaction(Sensor_ID, variable, depth_cm))) +
-        geom_line() +
-        xlab("") -> b 
-
-      # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
-      # Try to assign color intelligently. If different plots are selected,
-      # have that be the color; otherwise by depth; otherwise by ID
-      if(length(unique(selected_data$Plot)) > 1) {
-        b <- b + aes(color = Plot)
-      } else if(length(unique(selected_data$variable)) > 1) {
-        b <- b + aes(color = variable)
-      }else if(length(unique(selected_data$depth_cm)) > 1)  {
-        b <- b + aes(color = as.factor(depth_cm))
-      } else {
-        b <- b + aes(color = Sensor_ID)
-      }
+      p <- try({
+        p <- ggplot(selected_data, aes(Timestamp, value, group = interaction(Sensor_ID, variable, depth_cm))) +
+          geom_line() +
+          xlab("")
+        
+        # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
+        # Try to assign color intelligently. If different plots are selected,
+        # have that be the color; otherwise by depth; otherwise by ID
+        if(length(unique(selected_data$Plot)) > 1) {
+          p <- p + aes(color = Plot)
+        } else if(length(unique(selected_data$variable)) > 1) {
+          p <- p + aes(color = variable)
+        } else if(length(unique(selected_data$depth_cm)) > 1)  {
+          p <- p + aes(color = as.factor(depth_cm))
+        } else {
+          p <- p + aes(color = Sensor_ID)
+        }
+      })
+      if(!is.ggplot(p)) p <- ERROR_GRAPH
       
     } else {
-      b <- NO_DATA_GRAPH
+      p <- NO_DATA_GRAPH
     }
-    b
+    return(p)
   })
   
   output$bad_teros21_plot <- renderPlot({
@@ -205,27 +208,29 @@ server <- function(input, output, session) {
         semi_join(tsensor_selected, 
                   by = c("Logger", "Plot", "Sensor_ID", "Location", "variable", "depth_cm")) -> selected_data
       
-      ggplot(selected_data, aes(Timestamp, value, group = interaction(Sensor_ID, variable, depth_cm))) +
-        geom_line() +
-        xlab("") -> b
-      
-      # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
-      # Try to assign color intelligently. If different plots are selected,
-      # have that be the color; otherwise by depth; otherwise by ID
-      if(length(unique(selected_data$Plot)) > 1) {
-        b <- b + aes(color = Plot)
-      } else if(length(unique(selected_data$variable)) > 1) {
-        b <- b + aes(color = variable)
-      }else if(length(unique(selected_data$depth_cm)) > 1)  {
-        b <- b + aes(color = as.factor(depth_cm))
-      } else {
-        b <- b + aes(color = Sensor_ID)
-      }
-      
+      p <- try({
+        ggplot(selected_data, aes(Timestamp, value, group = interaction(Sensor_ID, variable, depth_cm))) +
+          geom_line() +
+          xlab("") -> b
+        
+        # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
+        # Try to assign color intelligently. If different plots are selected,
+        # have that be the color; otherwise by depth; otherwise by ID
+        if(length(unique(selected_data$Plot)) > 1) {
+          b <- b + aes(color = Plot)
+        } else if(length(unique(selected_data$variable)) > 1) {
+          b <- b + aes(color = variable)
+        }else if(length(unique(selected_data$depth_cm)) > 1)  {
+          b <- b + aes(color = as.factor(depth_cm))
+        } else {
+          b <- b + aes(color = Sensor_ID)
+        }
+      })
+      if(!is.ggplot(p)) p <- ERROR_GRAPH
     } else {
-      b <- NO_DATA_GRAPH
+      p <- NO_DATA_GRAPH
     }
-    b
+    return(p)
   })
   
   output$bad_troll600_plot <- renderPlot({
@@ -243,23 +248,26 @@ server <- function(input, output, session) {
         semi_join(tsensor_selected, 
                   by = c("Logger", "Plot", "variable", "Instrument"))-> selected_data
       
-      ggplot(selected_data, aes(Timestamp, value, group = variable)) +
-        geom_line() +
-        xlab("") -> b
-      
-      # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
-      # Try to assign color intelligently. If different plots are selected,
-      # have that be the color; otherwise by depth; otherwise by ID
-      if(length(unique(selected_data$Plot)) > 1) {
-        b <- b + aes(color = Plot)
-      } else if(length(unique(selected_data$variable)) > 1) {
-        b <- b + aes(color = variable)
-      }
-      
+      p <- try({
+        
+        ggplot(selected_data, aes(Timestamp, value, group = variable)) +
+          geom_line() +
+          xlab("") -> b
+        
+        # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
+        # Try to assign color intelligently. If different plots are selected,
+        # have that be the color; otherwise by depth; otherwise by ID
+        if(length(unique(selected_data$Plot)) > 1) {
+          b <- b + aes(color = Plot)
+        } else if(length(unique(selected_data$variable)) > 1) {
+          b <- b + aes(color = variable)
+        }
+      })
+      if(!is.ggplot(p)) p <- ERROR_GRAPH
     } else {
-      b <- NO_DATA_GRAPH
+      p <- NO_DATA_GRAPH
     }
-    b
+    return(p)
   })
   
   output$bad_leveltroll_plot <- renderPlot({
@@ -271,29 +279,31 @@ server <- function(input, output, session) {
       dropbox_data()[["leveltroll_bad_sensors"]] %>%
         slice(input$leveltroll_bad_sensors_table_rows_selected) ->
         tsensor_selected
-
+      
       dropbox_data()[["leveltroll"]] %>%
         rename(Timestamp = TIMESTAMP) |> 
         semi_join(tsensor_selected, 
                   by = c("Logger", "Plot"))-> selected_data
       
-      ggplot(selected_data, aes(Timestamp, value, group = variable)) +
-        geom_line() +
-        xlab("") -> b
-      
-      # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
-      # Try to assign color intelligently. If different plots are selected,
-      # have that be the color; otherwise by depth; otherwise by ID
-      if(length(unique(selected_data$Plot)) > 1) {
-        b <- b + aes(color = Plot)
-      } else if(length(unique(selected_data$variable)) > 1) {
-        b <- b + aes(color = variable)
-      }
-      
+      p <- try({
+        ggplot(selected_data, aes(Timestamp, value, group = variable)) +
+          geom_line() +
+          xlab("") -> b
+        
+        # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
+        # Try to assign color intelligently. If different plots are selected,
+        # have that be the color; otherwise by depth; otherwise by ID
+        if(length(unique(selected_data$Plot)) > 1) {
+          b <- b + aes(color = Plot)
+        } else if(length(unique(selected_data$variable)) > 1) {
+          b <- b + aes(color = variable)
+        }
+      })
+      if(!is.ggplot(p)) p <- ERROR_GRAPH
     } else {
-      b <- NO_DATA_GRAPH
+      p <- NO_DATA_GRAPH
     }
-    b
+    return(p)
   })
   
   # ------------------ TEROS12 tab ---------------------------
@@ -309,22 +319,24 @@ server <- function(input, output, session) {
       teros12
     
     if(nrow(teros12) > 0) {
-
-      teros12 %>%
-        group_by(Plot, variable, Logger, TIMESTAMP) %>%
-        summarise(value = mean(value, na.rm = TRUE), .groups = "drop") %>%
-        ggplot() +
-        facet_wrap(Logger ~ variable, scales = "free", ncol = 3) +
-        geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
-                  xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
-                  ymin = -Inf, ymax = Inf) +
-        geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
-        xlab("") +
-        theme(text = element_text(size = 18))
-      
+      p <- try({
+        teros12 %>%
+          group_by(Plot, variable, Logger, TIMESTAMP) %>%
+          summarise(value = mean(value, na.rm = TRUE), .groups = "drop") %>%
+          ggplot() +
+          facet_wrap(Logger ~ variable, scales = "free", ncol = 3) +
+          geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
+                    xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
+                    ymin = -Inf, ymax = Inf) +
+          geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
+          xlab("") +
+          theme(text = element_text(size = 18))
+      })
+      if(!is.ggplot(p)) p <- ERROR_GRAPH
     } else {
-      NO_DATA_GRAPH
+      p <- NO_DATA_GRAPH
     }
+    return(p)
   })
   
   # ------------------ TEROS21 tab ---------------------------
@@ -340,24 +352,28 @@ server <- function(input, output, session) {
       teros21
     
     if(nrow(teros21) > 0) {
-      teros21 %>%
-        group_by(Plot, variable, Logger, TIMESTAMP) %>%
-        summarise(value = mean(value, na.rm = TRUE), .groups = "drop") %>%
-        ggplot() +
-        facet_wrap(Logger ~ variable, scales = "free", ncol = 3) +
-        geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
-                  xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
-                  ymin = -Inf, ymax = Inf) +
-        geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
-        xlab("") +
-        theme(text = element_text(size = 18))
+      p <- try({
+        teros21 %>%
+          group_by(Plot, variable, Logger, TIMESTAMP) %>%
+          summarise(value = mean(value, na.rm = TRUE), .groups = "drop") %>%
+          ggplot() +
+          facet_wrap(Logger ~ variable, scales = "free", ncol = 3) +
+          geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
+                    xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
+                    ymin = -Inf, ymax = Inf) +
+          geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
+          xlab("") +
+          theme(text = element_text(size = 18))
+      })
+      if(!is.ggplot(p)) p <- ERROR_GRAPH
     } else {
-      NO_DATA_GRAPH
+      p <- NO_DATA_GRAPH
     }
+    return(p)
   })
   
   # ------------------ AquaTROLL tab ---------------------------
-
+  
   output$aquatroll_plot <- renderPlot({
     # This graph is shown when users click the "AquaTROLL" tab on the dashboard
     
@@ -367,18 +383,21 @@ server <- function(input, output, session) {
       troll600
     
     if(nrow(troll600) > 0) {
-      troll600 %>%
-        ggplot() +
-        facet_wrap(Logger ~ variable, scales = "free", ncol = 4) +
-        geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
-                  xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
-                  ymin = -Inf, ymax = Inf) +
-        geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
-        xlab("") +
-        theme(text = element_text(size = 18))
+      p <- try({
+        ggplot(troll600) +
+          facet_wrap(Logger ~ variable, scales = "free", ncol = 4) +
+          geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
+                    xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
+                    ymin = -Inf, ymax = Inf) +
+          geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
+          xlab("") +
+          theme(text = element_text(size = 18))
+      })
+      if(!is.ggplot(p)) p <- ERROR_GRAPH
     } else {
-      NO_DATA_GRAPH
+      p <- NO_DATA_GRAPH
     }
+    return(p)
   })
   
   # ------------------ LevelTROLL tab ---------------------------
@@ -392,19 +411,21 @@ server <- function(input, output, session) {
       leveltroll
     
     if(nrow(leveltroll) > 0) {
-      leveltroll %>%
-        ggplot() +
-        facet_wrap(Plot ~ Logger, scales = "free", ncol = 1) +
-        geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
-                  xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
-                  ymin = -Inf, ymax = Inf) +
-        geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
-        xlab("") + ylab("Water depth (based on 151 cm sensor height") +
-        theme(text = element_text(size = 18))
+      p <- try({
+        ggplot(leveltroll) +
+          facet_wrap(Plot ~ Logger, scales = "free", ncol = 1) +
+          geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
+                    xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
+                    ymin = -Inf, ymax = Inf) +
+          geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
+          xlab("") + ylab("Water depth (based on 151 cm sensor height") +
+          theme(text = element_text(size = 18))
+      })
+      if(!is.ggplot(p)) p <- ERROR_GRAPH
     } else {
-      NO_DATA_GRAPH
+      p <- NO_DATA_GRAPH
     }
-    
+    return(p)
   })
   
   # ------------------ Dashboard badges -----------------------------

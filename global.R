@@ -50,3 +50,9 @@ NO_DATA_GRAPH <- ggplot() +
     theme(axis.title = element_blank(),
           axis.text  = element_blank(),
     )
+# The 'error' graph is displayed if an error occurs during the ggplot() call
+ERROR_GRAPH <- ggplot() +
+  annotate("text", x = 1, y = 1, label = "(Plotting error)", size = 12) +
+  theme(axis.title = element_blank(),
+        axis.text  = element_blank(),
+  )
