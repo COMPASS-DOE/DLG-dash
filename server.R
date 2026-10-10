@@ -2,7 +2,6 @@
 # Stephanie Pennington October 2026
 
 source("global.R")
-source("flag_sensors.R")
 
 server <- function(input, output, session) {
   
