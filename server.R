@@ -12,7 +12,9 @@ server <- function(input, output, session) {
   
   output$latest_data_download <- 
     renderText(
-      paste("Latest data update: ", last_data_download$ldc, last_data_download$ldt)
+      paste0("Latest data update: ", 
+             format(last_data_download$ldt, format = "%Y-%m-%d %H:%M:%S %Z"),
+             " (commit ", last_data_download$ldc, ")")
     )
   
   dataInvalidate  <- reactive({
