@@ -57,8 +57,9 @@ badge_color <- function(frac_out, badge_colors = BADGE_COLORS) {
 }
 
 # Identify which observations are outside of limits
+# NA and NaN count as outside
 which_outside_limits <- function(values, left_limit, right_limit) {
-    is.na(values) | !between(values, left_limit, right_limit)
+    !is.finite(values) | !between(values, left_limit, right_limit)
 }
 
 # Compute fraction (0-1) of values outside specified limits
@@ -72,13 +73,11 @@ frac_outside_limits <- function(values, left_limit, right_limit, na.rm = FALSE) 
 
 
 bad_sensors <- function(df, values, id, limits) {
-
     df[!between(values, min(limits), max(limits)), ] %>% select(id, Grid_Square) -> bounds
 
     df[is.na(values), ] %>% select(id, Grid_Square) -> nas
 
     unique(bind_rows(nas, bounds))
-
 }
 
 

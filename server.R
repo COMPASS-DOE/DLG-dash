@@ -169,9 +169,9 @@ server <- function(input, output, session) {
       
       ggplot(selected_data, aes(Timestamp, value, group = interaction(Sensor_ID, variable, depth_cm))) +
         geom_line() +
-        xlab("") -> b #+
+        xlab("") -> b 
 
-              # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
+      # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
       # Try to assign color intelligently. If different plots are selected,
       # have that be the color; otherwise by depth; otherwise by ID
       if(length(unique(selected_data$Plot)) > 1) {
@@ -207,7 +207,7 @@ server <- function(input, output, session) {
       
       ggplot(selected_data, aes(Timestamp, value, group = interaction(Sensor_ID, variable, depth_cm))) +
         geom_line() +
-        xlab("") -> b #+
+        xlab("") -> b
       
       # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
       # Try to assign color intelligently. If different plots are selected,
@@ -245,7 +245,7 @@ server <- function(input, output, session) {
       
       ggplot(selected_data, aes(Timestamp, value, group = variable)) +
         geom_line() +
-        xlab("") -> b #+
+        xlab("") -> b
       
       # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
       # Try to assign color intelligently. If different plots are selected,
@@ -279,7 +279,7 @@ server <- function(input, output, session) {
       
       ggplot(selected_data, aes(Timestamp, value, group = variable)) +
         geom_line() +
-        xlab("") -> b #+
+        xlab("") -> b
       
       # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
       # Try to assign color intelligently. If different plots are selected,
@@ -305,26 +305,20 @@ server <- function(input, output, session) {
     
     ddt <- reactive({ DASHBOARD_DATETIME() })()
     
-    dropbox_data()[["teros12"]] |> 
-      filter(!is.na(value), !is.nan(value)) ->
+    dropbox_data()[["teros12"]] ->
       teros12
     
     if(nrow(teros12) > 0) {
 
       teros12 %>%
-        # Certain versions of plotly seem to have a bug and produce
-        # a tidyr::pivot error when there's a 'variable' column; rename
-        rename(var = variable, Timestamp = TIMESTAMP) %>%
-        #mutate(Timestamp_rounded = round_date(Timestamp, GRAPH_TIME_INTERVAL)) %>%
-        group_by(Plot, var, Logger, Timestamp) %>%
+        group_by(Plot, variable, Logger, TIMESTAMP) %>%
         summarise(value = mean(value, na.rm = TRUE), .groups = "drop") %>%
-        left_join(TEROS12_RANGE, by = c("var" = "variable")) |> 
         ggplot() +
-        facet_wrap(Logger ~ var, scales = "free", ncol = 3) +
+        facet_wrap(Logger ~ variable, scales = "free", ncol = 3) +
         geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
                   xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
                   ymin = -Inf, ymax = Inf) +
-        geom_line(aes(Timestamp, value, color = Plot), na.rm = TRUE) +
+        geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
         xlab("") +
         theme(text = element_text(size = 18))
       
@@ -342,29 +336,21 @@ server <- function(input, output, session) {
     
     ddt <- reactive({ DASHBOARD_DATETIME() })()
     
-    dropbox_data()[["teros21"]] |> 
-      filter(!is.na(value), !is.nan(value)) ->
+    dropbox_data()[["teros21"]] ->
       teros21
     
     if(nrow(teros21) > 0) {
-      
       teros21 %>%
-        # Certain versions of plotly seem to have a bug and produce
-        # a tidyr::pivot error when there's a 'variable' column; rename
-        rename(var = variable, Timestamp = TIMESTAMP) %>%
-        #mutate(Timestamp_rounded = round_date(Timestamp, GRAPH_TIME_INTERVAL)) %>%
-        group_by(Plot, var, Logger, Timestamp) %>%
+        group_by(Plot, variable, Logger, TIMESTAMP) %>%
         summarise(value = mean(value, na.rm = TRUE), .groups = "drop") %>%
-        left_join(TEROS21_RANGE, by = c("var" = "variable")) |> 
         ggplot() +
-        facet_wrap(Logger ~ var, scales = "free", ncol = 3) +
+        facet_wrap(Logger ~ variable, scales = "free", ncol = 3) +
         geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
                   xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
                   ymin = -Inf, ymax = Inf) +
-        geom_line(aes(Timestamp, value, color = Plot), na.rm = TRUE) +
+        geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
         xlab("") +
         theme(text = element_text(size = 18))
-      
     } else {
       NO_DATA_GRAPH
     }
@@ -377,30 +363,22 @@ server <- function(input, output, session) {
     
     ddt <- reactive({ DASHBOARD_DATETIME() })()
     
-    dropbox_data()[["troll600"]] |> 
-      filter(!is.na(value), !is.nan(value)) ->
+    dropbox_data()[["troll600"]] ->
       troll600
     
     if(nrow(troll600) > 0) {
-
       troll600 %>%
-        # Certain versions of plotly seem to have a bug and produce
-        # a tidyr::pivot error when there's a 'variable' column; rename
-        rename(var = variable, Timestamp = TIMESTAMP) %>%
-        left_join(AQUATROLL_RANGE, by = c("var" = "variable")) |> 
         ggplot() +
-        facet_wrap(Logger ~ var, scales = "free", ncol = 4) +
+        facet_wrap(Logger ~ variable, scales = "free", ncol = 4) +
         geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
                   xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
                   ymin = -Inf, ymax = Inf) +
-        geom_line(aes(Timestamp, value, color = Plot), na.rm = TRUE) +
+        geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
         xlab("") +
         theme(text = element_text(size = 18))
-      
     } else {
       NO_DATA_GRAPH
     }
-    
   })
   
   # ------------------ LevelTROLL tab ---------------------------
@@ -410,25 +388,19 @@ server <- function(input, output, session) {
     
     ddt <- reactive({ DASHBOARD_DATETIME() })()
     
-    dropbox_data()[["leveltroll"]] |> 
-      filter(!is.na(value), !is.nan(value)) ->
+    dropbox_data()[["leveltroll"]] ->
       leveltroll
     
     if(nrow(leveltroll) > 0) {
       leveltroll %>%
-        # Certain versions of plotly seem to have a bug and produce
-        # a tidyr::pivot error when there's a 'variable' column; rename
-        rename(var = variable, Timestamp = TIMESTAMP) %>%
-        #left_join(LEVELTROLL_RANGE, by = c("var" = "variable")) |> 
         ggplot() +
-        facet_wrap(Logger ~ Plot, scales = "free", ncol = 1) +
+        facet_wrap(Plot ~ Logger, scales = "free", ncol = 1) +
         geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
                   xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
                   ymin = -Inf, ymax = Inf) +
-        geom_line(aes(Timestamp, value, color = Plot), na.rm = TRUE) +
+        geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
         xlab("") + ylab("Water depth (based on 151 cm sensor height") +
         theme(text = element_text(size = 18))
-      
     } else {
       NO_DATA_GRAPH
     }

@@ -51,7 +51,6 @@ compute_teros12 <- function(teros12, ddt) {
   list(teros12 = teros12_full,
        teros12_bdg = teros12_bdg,
        teros12_bad_sensors = teros12_bad_sensors)
-  
 }
 
 compute_teros21 <- function(teros21, ddt) {
@@ -102,11 +101,13 @@ compute_aquatroll <- function(troll600, ddt) {
       into = c("variable"),
       regex = "^gw-(.*)$",
       convert = TRUE, remove = FALSE) |> 
-    filter(variable %in% c("temperature", "salinity", "density", "rdo-conc")) -> troll600_full
+    filter(variable %in% c("temperature", "salinity", "density", "rdo-conc")) -> 
+    troll600_full
 
   troll600_full |> 
     filter_recent_timestamps(FLAG_TIME_WINDOW, ddt) %>%
-    left_join(AQUATROLL_RANGE, by = "variable") -> troll600_filtered
+    left_join(AQUATROLL_RANGE, by = "variable") -> 
+    troll600_filtered
   
   troll600_filtered |> 
     group_by(variable) %>%
@@ -133,7 +134,6 @@ compute_aquatroll <- function(troll600, ddt) {
   list(troll600 = troll600_full,
        troll600_bdg = troll600_bdg,
        troll600_bad_sensors = troll600_bad_sensors)
-  
 }
 
 compute_leveltroll <- function(leveltroll, ddt) {
@@ -143,19 +143,22 @@ compute_leveltroll <- function(leveltroll, ddt) {
     # A small number of leveltroll values in F3 are zero, implying that
     # water is right up to the sensor. This can't be right; presumably
     # there's vegetation or something in the way. Remove
-    filter(value > 0) |> 
-    # BBL: I summarised the leveltroll data and the largest value is 151,
+    filter(!is.finite(value) | value > 0) |> 
+    # BBL: I summarized the leveltroll data and the largest value is 151,
     # so for now let's assume that all sensors are mounted at that height
     # TODO: later we should get precise plot-specific measurements
     mutate(value = LEVELTROLL_RANGE[2] - value) |> 
-    rename(variable = research_name) -> leveltroll_full
+    rename(variable = research_name) ->
+    leveltroll_full
   
   leveltroll_full |> 
-    filter_recent_timestamps(FLAG_TIME_WINDOW, ddt) -> leveltroll_filtered
-    
-  leveltroll_filtered |> 
-    summarise(flag_sensors(value, limits = LEVELTROLL_RANGE)) -> leveltroll_bdg
+    filter_recent_timestamps(FLAG_TIME_WINDOW, ddt) ->
+    leveltroll_filtered
   
+  leveltroll_filtered |> 
+    summarise(flag_sensors(value, limits = LEVELTROLL_RANGE)) -> 
+    leveltroll_bdg
+
   leveltroll_filtered %>%
     mutate(bad_sensor = which_outside_limits(value,
                                              left_limit = LEVELTROLL_RANGE[1],
@@ -168,6 +171,4 @@ compute_leveltroll <- function(leveltroll, ddt) {
   list(leveltroll = leveltroll_full,
        leveltroll_bdg = leveltroll_bdg,
        leveltroll_bad_sensors = leveltroll_bad_sensors)
-  
 }
-
