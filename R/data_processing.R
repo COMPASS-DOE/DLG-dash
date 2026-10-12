@@ -24,12 +24,12 @@ compute_teros12 <- function(teros12, ddt) {
       regex = "^[^-]+-(.*)-([0-9]+)cm$",
       convert = TRUE, remove = FALSE) -> 
     teros12_full
-  
+
   teros12_full |> 
     filter_recent_timestamps(FLAG_TIME_WINDOW, ddt) %>%
     left_join(TEROS12_RANGE, by = "variable") -> 
     teros_filtered
-  
+
   teros_filtered %>%
     group_by(variable) %>%
     summarise(flag_sensors(value, limits = c(low[1], high[1]))) %>%
@@ -40,7 +40,7 @@ compute_teros12 <- function(teros12, ddt) {
                                 "--"),
            color = badge_color(1 - fraction_in)) ->
     teros12_bdg
-  
+
   teros_filtered %>%
     group_by(variable) %>%
     mutate(bad_sensor = which_outside_limits(value,
@@ -48,9 +48,11 @@ compute_teros12 <- function(teros12, ddt) {
                                              right_limit = high[1]),
            .keep = "all") %>%
     filter(bad_sensor) %>%
-    ungroup() %>%
-    select(Plot, Sensor_ID, variable, depth_cm, Logger, Location) %>%
-    distinct(Sensor_ID, Logger, .keep_all = TRUE) ->
+    arrange(Timestamp, .by_group = TRUE) %>%
+    mutate(last_value = last(value)) %>%
+    ungroup() |> 
+    select(Plot, Sensor_ID, variable, depth_cm, Logger, Location, last_value) %>%
+    distinct(Sensor_ID, Logger, variable, .keep_all = TRUE) ->
     teros12_bad_sensors
   
   list(teros12 = teros12_full,
@@ -88,8 +90,10 @@ compute_teros21 <- function(teros21, ddt) {
                                              right_limit = high[1]),
            .keep = "all") %>%
     filter(bad_sensor) %>%
+    arrange(Timestamp, .by_group = TRUE) %>%
+    mutate(last_value = last(value)) %>%
     ungroup() %>%
-    select(Plot, Sensor_ID, variable, depth_cm, Logger, Location) %>%
+    select(Plot, Sensor_ID, variable, depth_cm, Logger, Location, last_value) %>%
     distinct(Sensor_ID, Logger, .keep_all = TRUE) ->
     teros21_bad_sensors
   
@@ -131,8 +135,10 @@ compute_aquatroll <- function(troll600, ddt) {
                                              right_limit = high[1]),
            .keep = "all") %>%
     filter(bad_sensor) %>%
+    arrange(Timestamp, .by_group = TRUE) %>%
+    mutate(last_value = last(value)) %>%
     ungroup() %>%
-    select(Plot, variable, Logger, Instrument) %>%
+    select(Plot, variable, Logger, Instrument, last_value) %>%
     distinct(Plot, Logger, .keep_all = TRUE) ->
     troll600_bad_sensors
   
@@ -170,7 +176,10 @@ compute_leveltroll <- function(leveltroll, ddt) {
                                   left_limit = LEVELTROLL_RANGE[1],
                                   right_limit = LEVELTROLL_RANGE[2])) %>%
     filter(bad_sensor) %>%
-    select(Plot, Logger) %>%
+    arrange(Timestamp, .by_group = TRUE) %>%
+    mutate(last_value = last(value)) %>%
+    ungroup |> 
+    select(Plot, Logger, last_value) %>%
     distinct(Logger, .keep_all = TRUE) ->
     leveltroll_bad_sensors
   

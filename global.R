@@ -28,7 +28,7 @@ EVENT_LENGTH <- 3
 
 GRAPH_TIME_WINDOW <- 24   # hours back from the dashboard datetime
 GRAPH_TIME_INTERVAL <- "15 minutes"  # used by round_date in graphs
-FLAG_TIME_WINDOW <- 120         # hours back from the dashboard datetime
+FLAG_TIME_WINDOW <- 12         # hours back from the dashboard datetime
 
 # The 'no data' graph that's shown if no rows are selected, etc.
 NO_DATA_GRAPH <- ggplot() +
