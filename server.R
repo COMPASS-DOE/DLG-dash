@@ -1,12 +1,39 @@
-# Server code for the TEMPEST data dashboard
-# June 2023
+# User interface code for the DELUGE data dashboard
+# Stephanie Pennington October 2026
 
 source("global.R")
 
 server <- function(input, output, session) {
   
-  dataInvalidate  <- reactiveTimer(15 * 60 * 1000) # 15 minutes
-  alertInvalidate <- reactiveTimer(60 * 60 * 1000) # 60 minutes
+  # If pulling from GitHub, we keep track of the latest preprocessor commit
+  # and only download when that changes
+  last_data_download <- reactiveValues(ldc = "--", ldt = "--")
+  
+  output$latest_data_download <- 
+    renderText(
+      paste0("Latest data update: ", 
+             format(last_data_download$ldt, format = "%Y-%m-%d %H:%M:%S %Z"),
+             " (commit ", last_data_download$ldc, ")")
+    )
+ 
+  # ------------------ Data invalidation --------------------------
+  
+  dataInvalidate  <- reactive({
+    # Check if the Git commit of the preprocessor has changed
+    try(
+      commit <- system("git ls-remote https://github.com/COMPASS-DOE/sensor-data-preprocessor.git | head -n 1 | cut -c 1-7",
+                       intern = TRUE)
+    )
+    if(is.character(commit)) {
+      invalidate <- commit != last_data_download$ldc
+      last_data_download$ldc <- commit
+    } else {
+      warning("Couldn't contact GitHub")
+      invalidate <- FALSE
+    }
+    
+    return(invalidate)
+  })
   
   # ------------------ Check whether testing --------------------------
   
@@ -18,7 +45,7 @@ server <- function(input, output, session) {
   TESTING <<- TESTING || Sys.getenv("CI") == "true"
   
   # ------------------ Read in sensor data -----------------------------
-
+  
   # DASHBOARD_DATETIME is the datetime that the dashboard is showing
   # Normally this is just now (i.e., Sys.time()), but when testing
   # it will be the latest date of the static testing data
@@ -49,19 +76,34 @@ server <- function(input, output, session) {
       #ADD TESTING DATA
       
     } else if(DATA_SOURCE == "github"){
+      
+      withProgress({
+        setProgress(1, message = "Downloading TEROS12")
+        compasstools::recent_sensor_data("DLG", "TEROS12") |> 
+          compute_teros12(ddt) -> 
+          teros12_list
+        
+        setProgress(2, message = "Downloading TEROS21")
+        compasstools::recent_sensor_data("DLG", "TEROS21") |> 
+          compute_teros21(ddt) -> 
+          teros21_list
+        
+        setProgress(3, message = "Downloading AQUATROLL600")
+        compasstools::recent_sensor_data("DLG", "AQUATROLL600") |> 
+          compute_aquatroll(ddt) -> 
+          aquatroll_list
+        
+        setProgress(4, message = "Downloading LEVELTROLL")
+        compasstools::recent_sensor_data("DLG", "LEVELTROLL") |> 
+          compute_leveltroll(ddt) -> 
+          leveltroll_list
+      }, min = 0, max = 5)
 
-      read_parquet("https://github.com/COMPASS-DOE/sensor-data-preprocessor/blob/main/processed_data/DLG_TEROS12.parquet?raw=true") |> 
-        compute_teros12(ddt) -> teros12_list
       
-      read_parquet("https://github.com/COMPASS-DOE/sensor-data-preprocessor/blob/main/processed_data/DLG_TEROS21.parquet?raw=true") |> 
-        compute_teros21(ddt) -> teros21_list
+      last_data_download$ldt <- Sys.time()
       
-      read_parquet("https://github.com/COMPASS-DOE/sensor-data-preprocessor/blob/main/processed_data/DLG_AQUATROLL600.parquet?raw=true") |> 
-        compute_aquatroll(ddt) -> aquatroll_list
-      
-      read_parquet("https://github.com/COMPASS-DOE/sensor-data-preprocessor/blob/main/processed_data/DLG_LEVELTROLL.parquet?raw=true") |> 
-        compute_leveltroll(ddt) -> leveltroll_list
-
+    } else {
+      stop("DATA_SOURCE ", DATA_SOURCE, " not supported")
     }
     
     # Do limits testing and compute data needed for badges
@@ -81,7 +123,7 @@ server <- function(input, output, session) {
     {
       start <- progress()$EVENT_START
       end   <- reactive({ DASHBOARD_DATETIME() })()
-
+      
       mins <- floor(as.numeric(end - start, units = "mins"))
       sprintf(" DELUGE has been flooding for %d hours and %d minutes", mins %/% 60, mins %% 60)
       
@@ -95,12 +137,11 @@ server <- function(input, output, session) {
   
   output$elapsed <- renderText(time_elapsed())
   
-  
   # ------------------ Main dashboard bad sensor tables --------------------
-
+  
   output$teros12_bad_sensors_table <- DT::renderDataTable({
-      dropbox_data()[["teros12_bad_sensors"]] %>%
-          datatable(options = list(searching = FALSE, pageLength = 5))
+    dropbox_data()[["teros12_bad_sensors"]] %>%
+      datatable(options = list(searching = FALSE, pageLength = 5))
   })
   
   output$teros21_bad_sensors_table <- DT::renderDataTable({
@@ -109,8 +150,8 @@ server <- function(input, output, session) {
   })
   
   output$troll600_bad_sensors_table <- DT::renderDataTable({
-      dropbox_data()[["troll600_bad_sensors"]] %>%
-          datatable(options = list(searching = FALSE, pageLength = 5))
+    dropbox_data()[["troll600_bad_sensors"]] %>%
+      datatable(options = list(searching = FALSE, pageLength = 5))
   })
   
   output$leveltroll_bad_sensors_table <- DT::renderDataTable({
@@ -135,27 +176,30 @@ server <- function(input, output, session) {
         semi_join(tsensor_selected, 
                   by = c("Logger", "Plot", "Sensor_ID", "Location", "variable", "depth_cm"))-> selected_data
       
-      ggplot(selected_data, aes(Timestamp, value, group = interaction(Sensor_ID, variable, depth_cm))) +
-        geom_line() +
-        xlab("") -> b #+
-
-              # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
-      # Try to assign color intelligently. If different plots are selected,
-      # have that be the color; otherwise by depth; otherwise by ID
-      if(length(unique(selected_data$Plot)) > 1) {
-        b <- b + aes(color = Plot)
-      } else if(length(unique(selected_data$variable)) > 1) {
-        b <- b + aes(color = variable)
-      }else if(length(unique(selected_data$depth_cm)) > 1)  {
-        b <- b + aes(color = as.factor(depth_cm))
-      } else {
-        b <- b + aes(color = Sensor_ID)
-      }
+      p <- try({
+        p <- ggplot(selected_data, aes(Timestamp, value, group = interaction(Sensor_ID, variable, depth_cm))) +
+          geom_line() +
+          xlab("")
+        
+        # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
+        # Try to assign color intelligently. If different plots are selected,
+        # have that be the color; otherwise by depth; otherwise by ID
+        if(length(unique(selected_data$Plot)) > 1) {
+          p <- p + aes(color = Plot)
+        } else if(length(unique(selected_data$variable)) > 1) {
+          p <- p + aes(color = variable)
+        } else if(length(unique(selected_data$depth_cm)) > 1)  {
+          p <- p + aes(color = as.factor(depth_cm))
+        } else {
+          p <- p + aes(color = Sensor_ID)
+        }
+      })
+      if(!is_ggplot(p)) p <- ERROR_GRAPH
       
     } else {
-      b <- NO_DATA_GRAPH
+      p <- NO_DATA_GRAPH
     }
-    b
+    return(p)
   })
   
   output$bad_teros21_plot <- renderPlot({
@@ -171,29 +215,31 @@ server <- function(input, output, session) {
       dropbox_data()[["teros21"]] %>%
         rename(Timestamp = TIMESTAMP) |> 
         semi_join(tsensor_selected, 
-                  by = c("Logger", "Plot", "Sensor_ID", "Location", "variable", "depth_cm"))-> selected_data
+                  by = c("Logger", "Plot", "Sensor_ID", "Location", "variable", "depth_cm")) -> selected_data
       
-      ggplot(selected_data, aes(Timestamp, value, group = interaction(Sensor_ID, variable, depth_cm))) +
-        geom_line() +
-        xlab("") -> b #+
-      
-      # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
-      # Try to assign color intelligently. If different plots are selected,
-      # have that be the color; otherwise by depth; otherwise by ID
-      if(length(unique(selected_data$Plot)) > 1) {
-        b <- b + aes(color = Plot)
-      } else if(length(unique(selected_data$variable)) > 1) {
-        b <- b + aes(color = variable)
-      }else if(length(unique(selected_data$depth_cm)) > 1)  {
-        b <- b + aes(color = as.factor(depth_cm))
-      } else {
-        b <- b + aes(color = Sensor_ID)
-      }
-      
+      p <- try({
+        ggplot(selected_data, aes(Timestamp, value, group = interaction(Sensor_ID, variable, depth_cm))) +
+          geom_line() +
+          xlab("") -> b
+        
+        # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
+        # Try to assign color intelligently. If different plots are selected,
+        # have that be the color; otherwise by depth; otherwise by ID
+        if(length(unique(selected_data$Plot)) > 1) {
+          b <- b + aes(color = Plot)
+        } else if(length(unique(selected_data$variable)) > 1) {
+          b <- b + aes(color = variable)
+        }else if(length(unique(selected_data$depth_cm)) > 1)  {
+          b <- b + aes(color = as.factor(depth_cm))
+        } else {
+          b <- b + aes(color = Sensor_ID)
+        }
+      })
+      if(!is_ggplot(p)) p <- ERROR_GRAPH
     } else {
-      b <- NO_DATA_GRAPH
+      p <- NO_DATA_GRAPH
     }
-    b
+    return(p)
   })
   
   output$bad_troll600_plot <- renderPlot({
@@ -211,23 +257,26 @@ server <- function(input, output, session) {
         semi_join(tsensor_selected, 
                   by = c("Logger", "Plot", "variable", "Instrument"))-> selected_data
       
-      ggplot(selected_data, aes(Timestamp, value, group = variable)) +
-        geom_line() +
-        xlab("") -> b #+
-      
-      # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
-      # Try to assign color intelligently. If different plots are selected,
-      # have that be the color; otherwise by depth; otherwise by ID
-      if(length(unique(selected_data$Plot)) > 1) {
-        b <- b + aes(color = Plot)
-      } else if(length(unique(selected_data$variable)) > 1) {
-        b <- b + aes(color = variable)
-      }
-      
+      p <- try({
+        
+        ggplot(selected_data, aes(Timestamp, value, group = variable)) +
+          geom_line() +
+          xlab("") -> b
+        
+        # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
+        # Try to assign color intelligently. If different plots are selected,
+        # have that be the color; otherwise by depth; otherwise by ID
+        if(length(unique(selected_data$Plot)) > 1) {
+          b <- b + aes(color = Plot)
+        } else if(length(unique(selected_data$variable)) > 1) {
+          b <- b + aes(color = variable)
+        }
+      })
+      if(!is_ggplot(p)) p <- ERROR_GRAPH
     } else {
-      b <- NO_DATA_GRAPH
+      p <- NO_DATA_GRAPH
     }
-    b
+    return(p)
   })
   
   output$bad_leveltroll_plot <- renderPlot({
@@ -239,179 +288,153 @@ server <- function(input, output, session) {
       dropbox_data()[["leveltroll_bad_sensors"]] %>%
         slice(input$leveltroll_bad_sensors_table_rows_selected) ->
         tsensor_selected
-
+      
       dropbox_data()[["leveltroll"]] %>%
         rename(Timestamp = TIMESTAMP) |> 
         semi_join(tsensor_selected, 
                   by = c("Logger", "Plot"))-> selected_data
       
-      ggplot(selected_data, aes(Timestamp, value, group = variable)) +
-        geom_line() +
-        xlab("") -> b #+
-      
-      # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
-      # Try to assign color intelligently. If different plots are selected,
-      # have that be the color; otherwise by depth; otherwise by ID
-      if(length(unique(selected_data$Plot)) > 1) {
-        b <- b + aes(color = Plot)
-      } else if(length(unique(selected_data$variable)) > 1) {
-        b <- b + aes(color = variable)
-      }
-      
+      p <- try({
+        ggplot(selected_data, aes(Timestamp, value, group = variable)) +
+          geom_line() +
+          xlab("") -> b
+        
+        # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
+        # Try to assign color intelligently. If different plots are selected,
+        # have that be the color; otherwise by depth; otherwise by ID
+        if(length(unique(selected_data$Plot)) > 1) {
+          b <- b + aes(color = Plot)
+        } else if(length(unique(selected_data$variable)) > 1) {
+          b <- b + aes(color = variable)
+        }
+      })
+      if(!is_ggplot(p)) p <- ERROR_GRAPH
     } else {
-      b <- NO_DATA_GRAPH
+      p <- NO_DATA_GRAPH
     }
-    b
+    return(p)
   })
   
   # ------------------ TEROS12 tab ---------------------------
   
-  # Define a semi-transparent rectangle to indicate flood start/stop
-  # We have to use a geom_rect to accommodate the faceted TEROS plot
-  # Each plot passes the ymin and ymax (bc plotly won't do -Inf/Inf) to `...`
-  shaded_flood_rect <- function(...)
-    reactive({
-      geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
-                
-                aes(xmin = progress()$EVENT_START,
-                    xmax = Inf, ...))
-    })() # remove the reactive before returning
-  
-  output$teros_plot <- renderPlot({
+  output$teros12_plot <- renderPlot({
     # Average TEROS data by plot and 15 minute interval,
     # one facet per sensor (temperature, moisture, conductivity)
-    # This graph is shown when users click the "TEROS" tab on the dashboard
+    # This graph is shown when users click the "TEROS12" tab on the dashboard
     
     ddt <- reactive({ DASHBOARD_DATETIME() })()
     
     dropbox_data()[["teros12"]] ->
       teros12
     
-    if(nrow(teros12)) {
-
-      teros12 %>%
-        # Certain versions of plotly seem to have a bug and produce
-        # a tidyr::pivot error when there's a 'variable' column; rename
-        rename(var = variable, Timestamp = TIMESTAMP) %>%
-        #mutate(Timestamp_rounded = round_date(Timestamp, GRAPH_TIME_INTERVAL)) %>%
-        group_by(Plot, var, Logger, Timestamp) %>%
-        summarise(value = mean(value, na.rm = TRUE), .groups = "drop") %>%
-        left_join(TEROS12_RANGE, by = c("var" = "variable")) |> 
-        ggplot() +
-        facet_wrap(Logger ~ var, scales = "free", ncol = 3) +
-        shaded_flood_rect(ymin = -Inf, ymax = Inf) +
-        geom_line(aes(Timestamp, value, color = Plot)) +
-        xlab("") +
-        theme(text = element_text(size = 18))
-      
+    if(nrow(teros12) > 0) {
+      p <- try({
+        teros12 %>%
+          group_by(Plot, variable, Logger, TIMESTAMP) %>%
+          summarise(value = mean(value, na.rm = TRUE), .groups = "drop") %>%
+          ggplot() +
+          facet_wrap(Logger ~ variable, scales = "free", ncol = 3) +
+          geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
+                    xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
+                    ymin = -Inf, ymax = Inf) +
+          geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
+          xlab("") +
+          theme(text = element_text(size = 18))
+      })
+      if(!is_ggplot(p)) p <- ERROR_GRAPH
     } else {
-      b <- NO_DATA_GRAPH
+      p <- NO_DATA_GRAPH
     }
+    return(p)
   })
   
   # ------------------ TEROS21 tab ---------------------------
   
-  # Define a semi-transparent rectangle to indicate flood start/stop
-  # We have to use a geom_rect to accommodate the faceted TEROS plot
-  # Each plot passes the ymin and ymax (bc plotly won't do -Inf/Inf) to `...`
-  shaded_flood_rect <- function(...)
-    reactive({
-      geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
-                
-                aes(xmin = progress()$EVENT_START,
-                    xmax = Inf, ...))
-    })() # remove the reactive before returning
-  
   output$teros21_plot <- renderPlot({
     # Average TEROS data by plot and 15 minute interval,
     # one facet per sensor (temperature, moisture, conductivity)
-    # This graph is shown when users click the "TEROS" tab on the dashboard
+    # This graph is shown when users click the "TEROS21" tab on the dashboard
     
     ddt <- reactive({ DASHBOARD_DATETIME() })()
     
     dropbox_data()[["teros21"]] ->
       teros21
     
-    if(nrow(teros21)) {
-      
-      teros21 %>%
-        # Certain versions of plotly seem to have a bug and produce
-        # a tidyr::pivot error when there's a 'variable' column; rename
-        rename(var = variable, Timestamp = TIMESTAMP) %>%
-        #mutate(Timestamp_rounded = round_date(Timestamp, GRAPH_TIME_INTERVAL)) %>%
-        group_by(Plot, var, Logger, Timestamp) %>%
-        summarise(value = mean(value, na.rm = TRUE), .groups = "drop") %>%
-        left_join(TEROS21_RANGE, by = c("var" = "variable")) |> 
-        ggplot() +
-        facet_wrap(Logger ~ var, scales = "free", ncol = 3) +
-        shaded_flood_rect(ymin = -Inf, ymax = Inf) +
-        geom_line(aes(Timestamp, value, color = Plot)) +
-        xlab("") +
-        theme(text = element_text(size = 18))
-      
+    if(nrow(teros21) > 0) {
+      p <- try({
+        teros21 %>%
+          group_by(Plot, variable, Logger, TIMESTAMP) %>%
+          summarise(value = mean(value, na.rm = TRUE), .groups = "drop") %>%
+          ggplot() +
+          facet_wrap(Logger ~ variable, scales = "free", ncol = 3) +
+          geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
+                    xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
+                    ymin = -Inf, ymax = Inf) +
+          geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
+          xlab("") +
+          theme(text = element_text(size = 18))
+      })
+      if(!is_ggplot(p)) p <- ERROR_GRAPH
     } else {
-      b <- NO_DATA_GRAPH
+      p <- NO_DATA_GRAPH
     }
+    return(p)
   })
   
   # ------------------ AquaTROLL tab ---------------------------
-
+  
   output$aquatroll_plot <- renderPlot({
-    # AquaTroll data plot
-    # This graph is shown when users click the "Aquatroll" tab on the dashboard
+    # This graph is shown when users click the "AquaTROLL" tab on the dashboard
     
     ddt <- reactive({ DASHBOARD_DATETIME() })()
     
     dropbox_data()[["troll600"]] ->
       troll600
     
-    if(nrow(troll600)) {
-
-      troll600 %>%
-        # Certain versions of plotly seem to have a bug and produce
-        # a tidyr::pivot error when there's a 'variable' column; rename
-        rename(var = variable, Timestamp = TIMESTAMP) %>%
-        left_join(AQUATROLL_RANGE, by = c("var" = "variable")) |> 
-        ggplot() +
-        facet_wrap(Logger ~ var, scales = "free", ncol = 4) +
-        shaded_flood_rect(ymin = -Inf, ymax = Inf) +
-        geom_line(aes(Timestamp, value, color = Plot)) +
-        xlab("") +
-        theme(text = element_text(size = 18))
-      
+    if(nrow(troll600) > 0) {
+      p <- try({
+        ggplot(troll600) +
+          facet_wrap(Logger ~ variable, scales = "free", ncol = 4) +
+          geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
+                    xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
+                    ymin = -Inf, ymax = Inf) +
+          geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
+          xlab("") +
+          theme(text = element_text(size = 18))
+      })
+      if(!is_ggplot(p)) p <- ERROR_GRAPH
     } else {
-      b <- NO_DATA_GRAPH
+      p <- NO_DATA_GRAPH
     }
-    
+    return(p)
   })
   
   # ------------------ LevelTROLL tab ---------------------------
   
   output$leveltroll_plot <- renderPlot({
-
+    # This graph is shown when users click the "LevelTROLL" tab on the dashboard
+    
     ddt <- reactive({ DASHBOARD_DATETIME() })()
     
     dropbox_data()[["leveltroll"]] ->
       leveltroll
     
-    if(nrow(leveltroll)) {
-      browser()
-      leveltroll %>%
-        # Certain versions of plotly seem to have a bug and produce
-        # a tidyr::pivot error when there's a 'variable' column; rename
-        rename(var = variable, Timestamp = TIMESTAMP) %>%
-        #left_join(LEVELTROLL_RANGE, by = c("var" = "variable")) |> 
-        ggplot() +
-        facet_wrap(Logger ~ Plot, scales = "free", ncol = 1) +
-        shaded_flood_rect(ymin = -Inf, ymax = Inf) +
-        geom_line(aes(Timestamp, value, color = Plot)) +
-        xlab("") +
-        theme(text = element_text(size = 18))
-      
+    if(nrow(leveltroll) > 0) {
+      p <- try({
+        ggplot(leveltroll) +
+          facet_wrap(Plot ~ Logger, scales = "free", ncol = 1) +
+          geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
+                    xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
+                    ymin = -Inf, ymax = Inf) +
+          geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
+          xlab("") + ylab("Water depth (based on 151 cm sensor height") +
+          theme(text = element_text(size = 18))
+      })
+      if(!is_ggplot(p)) p <- ERROR_GRAPH
     } else {
-      b <- NO_DATA_GRAPH
+      p <- NO_DATA_GRAPH
     }
-    
+    return(p)
   })
   
   # ------------------ Dashboard badges -----------------------------
@@ -447,17 +470,4 @@ server <- function(input, output, session) {
              icon = icon("wifi")
     )
   })
-  
-  # ------------------ Text alerts -----------------------------
-  #
-  #     observeEvent({
-  #         # This will calculate values and send out messages to everyone in "new_user" df
-  #         # could just have people not choose what they want alerts for?
-  #         #initial_alert()
-  #         alertInvalidate()
-  #     }, {
-  #         # send_alerts is defined in R/alerts_module.R
-  #         send_alerts(dropbox_data)
-  #     })
-  #
 }

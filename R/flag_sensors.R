@@ -1,5 +1,5 @@
-# flag_sensors.R - utility functions
-# BBL June 2023
+# Utility functions for the DELUGE data dashboard
+# Stephanie Pennington October 2026
 
 # These RANGE variables are passed to flag_sensors() by the server, and used
 # to identify sensors out of range
@@ -7,22 +7,23 @@
 # For TEROS, these are all 1%/99% quantiles of test data
 # This one is a tibble because TEROS is three variables in a single dataset
 TEROS12_RANGE <- tribble(~variable, ~low, ~high,
-                       "EC",     10,   4500, #225 normally
-                       "temp",   5,   25,
-                       "vwc",    2000, 4000)
+                         "EC",      10,   4500, #225 normally
+                         "temp",    5,    25,
+                         "vwc",     2000, 4000)
 
-TEROS21_RANGE <- tribble(~variable, ~low, ~high,
-                       "MP",  -100000, 0,
-                       "vwc", 2000, 4000)
+TEROS21_RANGE <- tribble(~variable, ~low,    ~high,
+                         "mp",      -100000, 0,
+                         "temp",    5,       25,
+                         "vwc",     2000,    4000)
 
 SAPFLOW_RANGE <- c(0.2, 0.8) # roughly the 10%/90% quantiles of test data
 VOLTAGE_RANGE <- c(12, 14.3) # roughly 0.05%/99.5% quantiles of test data
 
 AQUATROLL_RANGE <- tribble(~variable, ~low,   ~high,
                        "salinity",      0,    350,
-                       "temperature",   -5,    50, # roughly 1%/99% quantiles of test data
-                       "rdo-conc",      0, 20,
-                       "density",       0.98,   1.05)
+                       "temperature",   -5,   50, # roughly 1%/99% quantiles of test data
+                       "rdo-conc",      0,    20,
+                       "density",       0.98, 1.05)
 
 AQUATROLL_TEMP_RANGE <- unlist(
     AQUATROLL_RANGE[AQUATROLL_RANGE$variable=="temperature", c("low", "high")]
@@ -32,7 +33,7 @@ DO_RANGE <- c(-5, 120)
 
 REDOX_RANGE <- c(-2500, 2500)
 
-LEVELTROLL_RANGE <- c(0, 500)
+LEVELTROLL_RANGE <- c(0, 151)
 
 # Badge colors and 'trigger' values
 # Currently green-yellow-red; could have more colors if desired
@@ -56,8 +57,9 @@ badge_color <- function(frac_out, badge_colors = BADGE_COLORS) {
 }
 
 # Identify which observations are outside of limits
+# NA and NaN count as outside
 which_outside_limits <- function(values, left_limit, right_limit) {
-    is.na(values) | !between(values, left_limit, right_limit)
+    !is.finite(values) | !between(values, left_limit, right_limit)
 }
 
 # Compute fraction (0-1) of values outside specified limits
@@ -69,17 +71,13 @@ frac_outside_limits <- function(values, left_limit, right_limit, na.rm = FALSE) 
     sum(which_outside_limits(values, left_limit, right_limit)) / length(values)
 }
 
-
 bad_sensors <- function(df, values, id, limits) {
-
     df[!between(values, min(limits), max(limits)), ] %>% select(id, Grid_Square) -> bounds
 
     df[is.na(values), ] %>% select(id, Grid_Square) -> nas
 
     unique(bind_rows(nas, bounds))
-
 }
-
 
 # Return both fraction_out and associated badge color for a vector of
 # values and associated limits
