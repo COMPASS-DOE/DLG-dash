@@ -175,23 +175,23 @@ server <- function(input, output, session) {
         rename(Timestamp = TIMESTAMP) |> 
         semi_join(tsensor_selected, 
                   by = c("Logger", "Plot", "Sensor_ID", "Location", "variable", "depth_cm"))-> selected_data
-      
+
       p <- try({
-        p <- ggplot(selected_data, aes(Timestamp, value, group = interaction(Sensor_ID, variable, depth_cm))) +
+        ggplot(selected_data, aes(Timestamp, value, group = interaction(Sensor_ID, variable, depth_cm))) +
           geom_line() +
-          xlab("")
+          xlab("") -> b
         
         # xlim(c(ddt - GRAPH_TIME_WINDOW * 60 * 60, ddt)) -> b
         # Try to assign color intelligently. If different plots are selected,
         # have that be the color; otherwise by depth; otherwise by ID
         if(length(unique(selected_data$Plot)) > 1) {
-          p <- p + aes(color = Plot)
+          b <- b + aes(color = Plot)
         } else if(length(unique(selected_data$variable)) > 1) {
-          p <- p + aes(color = variable)
+          b <- b + aes(color = variable)
         } else if(length(unique(selected_data$depth_cm)) > 1)  {
-          p <- p + aes(color = as.factor(depth_cm))
+          b <- b + aes(color = as.factor(depth_cm))
         } else {
-          p <- p + aes(color = Sensor_ID)
+          b <- b + aes(color = Sensor_ID)
         }
       })
       if(!is_ggplot(p)) p <- ERROR_GRAPH
@@ -216,7 +216,7 @@ server <- function(input, output, session) {
         rename(Timestamp = TIMESTAMP) |> 
         semi_join(tsensor_selected, 
                   by = c("Logger", "Plot", "Sensor_ID", "Location", "variable", "depth_cm")) -> selected_data
-      
+
       p <- try({
         ggplot(selected_data, aes(Timestamp, value, group = interaction(Sensor_ID, variable, depth_cm))) +
           geom_line() +
@@ -256,7 +256,7 @@ server <- function(input, output, session) {
         rename(Timestamp = TIMESTAMP) |> 
         semi_join(tsensor_selected, 
                   by = c("Logger", "Plot", "variable", "Instrument"))-> selected_data
-      
+
       p <- try({
         
         ggplot(selected_data, aes(Timestamp, value, group = variable)) +
@@ -293,9 +293,9 @@ server <- function(input, output, session) {
         rename(Timestamp = TIMESTAMP) |> 
         semi_join(tsensor_selected, 
                   by = c("Logger", "Plot"))-> selected_data
-      
+
       p <- try({
-        ggplot(selected_data, aes(Timestamp, value, group = variable)) +
+        ggplot(selected_data, aes(Timestamp, value, color = variable)) +
           geom_line() +
           xlab("") -> b
         
@@ -359,7 +359,7 @@ server <- function(input, output, session) {
     
     dropbox_data()[["teros21"]] ->
       teros21
-    
+
     if(nrow(teros21) > 0) {
       p <- try({
         teros21 %>%
@@ -418,7 +418,7 @@ server <- function(input, output, session) {
     
     dropbox_data()[["leveltroll"]] ->
       leveltroll
-    
+
     if(nrow(leveltroll) > 0) {
       p <- try({
         ggplot(leveltroll) +
