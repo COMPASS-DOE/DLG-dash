@@ -48,8 +48,11 @@ compute_teros12 <- function(teros12, ddt) {
                                              right_limit = high[1]),
            .keep = "all") %>%
     filter(bad_sensor) %>%
+    ungroup() |> 
+    group_by(Logger, Sensor_ID, variable) |> 
     arrange(Timestamp, .by_group = TRUE) %>%
-    mutate(last_value = last(value)) %>%
+    mutate(last = last(value),
+           last_value = case_when(is.nan(last) ~ "NaN", .default = as.character(last))) %>%
     ungroup() |> 
     select(Plot, Sensor_ID, variable, depth_cm, Logger, Location, last_value) %>%
     distinct(Sensor_ID, Logger, variable, .keep_all = TRUE) ->
@@ -62,12 +65,19 @@ compute_teros12 <- function(teros12, ddt) {
 
 compute_teros21 <- function(teros21, ddt) {
   
+  # NOTE: according to the tracking doc, R1 and R2 only have Sensor_ID 4, so filtering out the extras
+  # post test flood we will confirm and update design table
+  teros21 |> 
+    filter(Plot %in% c("R1", "R2") & Sensor_ID != 4) |> 
+    distinct(Plot, Sensor_ID) -> delete_these 
+  
   teros21 |> 
     extract(
       research_name,
       into = c("variable", "depth_cm"),
       regex = "^[^-]+-(.*)-([0-9]+)cm$",
-      convert = TRUE, remove = FALSE) -> teros21_full
+      convert = TRUE, remove = FALSE) |> 
+     anti_join(delete_these, by = c("Plot", "Sensor_ID")) -> teros21_full
   
   teros21_full |> 
     filter_recent_timestamps(FLAG_TIME_WINDOW, ddt) %>%
@@ -90,8 +100,11 @@ compute_teros21 <- function(teros21, ddt) {
                                              right_limit = high[1]),
            .keep = "all") %>%
     filter(bad_sensor) %>%
+    ungroup() |> 
+    group_by(Logger, Sensor_ID, variable) |> 
     arrange(Timestamp, .by_group = TRUE) %>%
-    mutate(last_value = last(value)) %>%
+    mutate(last = last(value),
+           last_value = case_when(is.nan(last) ~ "NaN", .default = as.character(last))) %>%
     ungroup() %>%
     select(Plot, Sensor_ID, variable, depth_cm, Logger, Location, last_value) %>%
     distinct(Sensor_ID, Logger, .keep_all = TRUE) ->
@@ -102,9 +115,10 @@ compute_teros21 <- function(teros21, ddt) {
        teros21_bad_sensors = teros21_bad_sensors)
 }
 
-compute_aquatroll <- function(troll600, ddt) {
+compute_aquatroll <- function(troll600, crc_trolls, ddt) {
   
   troll600 |> 
+    bind_rows(crc_trolls) |> 
     extract(
       research_name,
       into = c("variable"),
@@ -135,8 +149,11 @@ compute_aquatroll <- function(troll600, ddt) {
                                              right_limit = high[1]),
            .keep = "all") %>%
     filter(bad_sensor) %>%
+    ungroup() |> 
+    group_by(Logger, Plot, variable) |> 
     arrange(Timestamp, .by_group = TRUE) %>%
-    mutate(last_value = last(value)) %>%
+    mutate(last = last(value),
+           last_value = case_when(is.nan(last) ~ "NaN", .default = as.character(last))) %>%
     ungroup() %>%
     select(Plot, variable, Logger, Instrument, last_value) %>%
     distinct(Plot, Logger, .keep_all = TRUE) ->
@@ -176,8 +193,11 @@ compute_leveltroll <- function(leveltroll, ddt) {
                                   left_limit = LEVELTROLL_RANGE[1],
                                   right_limit = LEVELTROLL_RANGE[2])) %>%
     filter(bad_sensor) %>%
+    ungroup() |> 
+    group_by(Logger, Plot) |> 
     arrange(Timestamp, .by_group = TRUE) %>%
-    mutate(last_value = last(value)) %>%
+    mutate(last = last(value),
+           last_value = case_when(is.nan(last) ~ "NaN", .default = as.character(last))) %>%
     ungroup |> 
     select(Plot, Logger, last_value) %>%
     distinct(Logger, .keep_all = TRUE) ->

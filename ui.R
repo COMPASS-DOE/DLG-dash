@@ -29,7 +29,6 @@ ui <- dashboardPage(
       menuItem("TEROS21", tabName = "teros21", icon = icon("worm")),
       menuItem("AquaTROLL", tabName = "aquatroll", icon = icon("water")),
       menuItem("LevelTROLL", tabName = "leveltroll", icon = icon("wifi"))
-      #menuItem("Alerts", tabName = "alerts", icon = icon("comment-dots"))
     )
   ),
   # Body ####
@@ -60,26 +59,28 @@ ui <- dashboardPage(
                    title = "Flood Stats",
                    width = 12,
                    background = "teal",
-                   textOutput("elapsed")
+                   textOutput("elapsed"),
+                   textOutput("current_level")
                  )
           ),
           column(width = 6,
                  tabBox(width = 12,
                         tabPanel(
                           title = "TEROS12",
-                          dataTableOutput("teros12_bad_sensors_table")
+                          dataTableOutput("teros12_bad_sensors_table", width = "100%", height = "auto"
+                                          )
                         ),
                         tabPanel(
                           title = "TEROS21",
-                          dataTableOutput("teros21_bad_sensors_table")
+                          dataTableOutput("teros21_bad_sensors_table", width = "100%", height = "auto")
                         ),
                         tabPanel(
                           title = "AquaTroll",
-                          dataTableOutput("troll600_bad_sensors_table")
+                          dataTableOutput("troll600_bad_sensors_table", width = "100%", height = "auto")
                         ),
                         tabPanel(
                           title = "LevelTROLL",
-                          dataTableOutput("leveltroll_bad_sensors_table")
+                          dataTableOutput("leveltroll_bad_sensors_table", width = "100%", height = "auto")
                         )
                  )
           )
@@ -110,19 +111,19 @@ ui <- dashboardPage(
       tabItem(
         tabName = "teros12",
         fluidRow(
-          plotOutput("teros12_plot", width = "100%", height = "700px")
+          plotOutput("teros12_plot", width = "100%", height = "900px")
         )
       ),
       tabItem(
         tabName = "teros21",
         fluidRow(
-          plotOutput("teros21_plot", width = "100%", height = "700px")
+          plotOutput("teros21_plot", width = "100%", height = "900px")
         )
       ),
       tabItem(
         tabName = "aquatroll",
         fluidRow(
-          plotOutput("aquatroll_plot", width = "100%", height = "700px")
+          plotOutput("aquatroll_plot", width = "100%", height = "900px")
         )
       ),
       tabItem(
@@ -131,8 +132,6 @@ ui <- dashboardPage(
           plotOutput("leveltroll_plot", width = "100%", height = "700px")
         )
       )
-      # Alerts tab UI is defined in R/alerts_module.R
-      # alertsUI("alertsTab")
     )
   )
 )

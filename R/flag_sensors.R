@@ -39,7 +39,7 @@ LEVELTROLL_RANGE <- c(0, 151)
 # Currently green-yellow-red; could have more colors if desired
 BADGE_COLORS <- c("green" = 0.0,    # green starts at 0% fail (this shouldn't change)
                   "yellow" = 0.05,  # yellow starts at 5% fail
-                  "red" = 0.2)      # red starts at 20%
+                  "red" = 0.3)      # red starts at 20%
 
 # Compute badge color(s) based on fraction(s) out
 badge_color <- function(frac_out, badge_colors = BADGE_COLORS) {

@@ -5,6 +5,8 @@ source("global.R")
 
 server <- function(input, output, session) {
   
+  dataInvalidate  <- reactiveTimer(2 * 60 * 1000) # 15 minutes
+  
   # If pulling from GitHub, we keep track of the latest preprocessor commit
   # and only download when that changes
   last_data_download <- reactiveValues(ldc = "--", ldt = "--")
@@ -18,7 +20,10 @@ server <- function(input, output, session) {
  
   # ------------------ Data invalidation --------------------------
   
-  dataInvalidate  <- reactive({
+  check_data  <- reactive({
+    
+    dataInvalidate()
+    
     # Check if the Git commit of the preprocessor has changed
     try(
       commit <- system("git ls-remote https://github.com/COMPASS-DOE/sensor-data-preprocessor.git | head -n 1 | cut -c 1-7",
@@ -89,8 +94,13 @@ server <- function(input, output, session) {
           teros21_list
         
         setProgress(3, message = "Downloading AQUATROLL600")
+        
+        compasstools::recent_sensor_data("CRC", "AQUATROLL600") |> 
+          filter(Plot == "UP") |> 
+          mutate(Site = "DLG", Plot = "F4") -> crc_trolls
+        
         compasstools::recent_sensor_data("DLG", "AQUATROLL600") |> 
-          compute_aquatroll(ddt) -> 
+          compute_aquatroll(crc_trolls, ddt) -> 
           aquatroll_list
         
         setProgress(4, message = "Downloading LEVELTROLL")
@@ -105,7 +115,7 @@ server <- function(input, output, session) {
     } else {
       stop("DATA_SOURCE ", DATA_SOURCE, " not supported")
     }
-    
+
     # Do limits testing and compute data needed for badges
     # compute_sapflow() etc. are defined in R/data_processing.R
     c(teros12_list, teros21_list, aquatroll_list, leveltroll_list)
@@ -119,44 +129,59 @@ server <- function(input, output, session) {
   progress <- gearServer("gear", session, DASHBOARD_DATETIME)
   
   time_elapsed <- eventReactive(
-    list(input$prog_button, dataInvalidate()),
+    list(input$prog_button, dropbox_data()),
     {
       start <- progress()$EVENT_START
       end   <- reactive({ DASHBOARD_DATETIME() })()
       
-      mins <- floor(as.numeric(end - start, units = "mins"))
-      sprintf(" DELUGE has been flooding for %d hours and %d minutes", mins %/% 60, mins %% 60)
+      total_mins <- floor(as.numeric(end - start, units = "mins"))
       
-      # difftime(reactive({ DASHBOARD_DATETIME() })(),
-      #          progress()$EVENT_START,
-      #          units = "hours") |> 
-      #   seconds_to_period(as.numeric(round(elapsed, digits = 2), units = "secs")) -> elapsed
+      hours <- total_mins %/% 60
+      mins <- total_mins %% 60
+
+      paste("DELUGE has been flooding for", hours, "hours and", mins, "minutes!")
       
     }, 
     ignoreInit = FALSE)
   
+  current_level <- eventReactive(
+    dropbox_data(),
+    {
+      
+      dropbox_data()[["leveltroll"]] |>
+        filter(Plot == "F1") |>
+        ungroup() |>
+        arrange(TIMESTAMP) |> 
+        summarise(Timestamp = last(TIMESTAMP), value = round(last(value), digits = 2)) |> 
+        mutate(Timestamp = format(Timestamp, "%b %d %H:%M:%S")) -> last_value
+
+      paste("The F1 plot water level is at", last_value$value, "cm on", last_value$Timestamp)
+    }, 
+    ignoreInit = FALSE)
+  
   output$elapsed <- renderText(time_elapsed())
+  output$current_level <- renderText(current_level())
   
   # ------------------ Main dashboard bad sensor tables --------------------
   
   output$teros12_bad_sensors_table <- DT::renderDataTable({
     dropbox_data()[["teros12_bad_sensors"]] %>%
-      datatable(options = list(searching = FALSE, pageLength = 5))
+      datatable(options = list(scrollX = TRUE, searching = FALSE, pageLength = 5))
   })
   
   output$teros21_bad_sensors_table <- DT::renderDataTable({
     dropbox_data()[["teros21_bad_sensors"]] %>%
-      datatable(options = list(searching = FALSE, pageLength = 5))
+      datatable(options = list(scrollX = TRUE, searching = FALSE, pageLength = 5))
   })
   
   output$troll600_bad_sensors_table <- DT::renderDataTable({
     dropbox_data()[["troll600_bad_sensors"]] %>%
-      datatable(options = list(searching = FALSE, pageLength = 5))
+      datatable(options = list(scrollX = TRUE, searching = FALSE, pageLength = 5))
   })
   
   output$leveltroll_bad_sensors_table <- DT::renderDataTable({
     dropbox_data()[["leveltroll_bad_sensors"]] %>%
-      datatable(options = list(searching = FALSE, pageLength = 5))
+      datatable(options = list(scrollX = TRUE, searching = FALSE, pageLength = 5))
   })
   
   # ------------------ Main dashboard bad sensor graphs  -----------------------
@@ -195,7 +220,6 @@ server <- function(input, output, session) {
         }
       })
       if(!is_ggplot(p)) p <- ERROR_GRAPH
-      
     } else {
       p <- NO_DATA_GRAPH
     }
@@ -326,7 +350,7 @@ server <- function(input, output, session) {
     
     dropbox_data()[["teros12"]] ->
       teros12
-    
+
     if(nrow(teros12) > 0) {
       p <- try({
         teros12 %>%
@@ -335,11 +359,16 @@ server <- function(input, output, session) {
           ggplot() +
           facet_wrap(Logger ~ variable, scales = "free", ncol = 3) +
           geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
-                    xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
+                    xmin = progress()$EVENT_START, xmax = Inf,
                     ymin = -Inf, ymax = Inf) +
           geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
           xlab("") +
-          theme(text = element_text(size = 18))
+          theme(text = element_text(size = 18),
+                axis.text.x = element_text(angle = 45, hjust = 1)) #+
+          # scale_x_datetime(
+          #   breaks = "1 day",
+          #   date_labels = "%b %d %M:%S" # Format how the date looks
+          # )
       })
       if(!is_ggplot(p)) p <- ERROR_GRAPH
     } else {
@@ -366,13 +395,14 @@ server <- function(input, output, session) {
           group_by(Plot, variable, Logger, TIMESTAMP) %>%
           summarise(value = mean(value, na.rm = TRUE), .groups = "drop") %>%
           ggplot() +
-          facet_wrap(Logger ~ variable, scales = "free", ncol = 3) +
+          facet_wrap(Logger ~ variable, scales = "free", ncol = 2) +
           geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
-                    xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
+                    xmin = progress()$EVENT_START, xmax = Inf,
                     ymin = -Inf, ymax = Inf) +
           geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
           xlab("") +
-          theme(text = element_text(size = 18))
+          theme(text = element_text(size = 18),
+                axis.text.x = element_text(angle = 45, hjust = 1))
       })
       if(!is_ggplot(p)) p <- ERROR_GRAPH
     } else {
@@ -396,11 +426,12 @@ server <- function(input, output, session) {
         ggplot(troll600) +
           facet_wrap(Logger ~ variable, scales = "free", ncol = 4) +
           geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
-                    xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
+                    xmin = progress()$EVENT_START, xmax = Inf,
                     ymin = -Inf, ymax = Inf) +
           geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
           xlab("") +
-          theme(text = element_text(size = 18))
+          theme(text = element_text(size = 18),
+                axis.text.x = element_text(angle = 45, hjust = 1))
       })
       if(!is_ggplot(p)) p <- ERROR_GRAPH
     } else {
@@ -424,11 +455,12 @@ server <- function(input, output, session) {
         ggplot(leveltroll) +
           facet_wrap(Plot ~ Logger, scales = "free", ncol = 1) +
           geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
-                    xmin = progress()$EVENT_START, xmax = progress()$EVENT_STOP,
+                    xmin = progress()$EVENT_START, xmax = Inf,
                     ymin = -Inf, ymax = Inf) +
           geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
           xlab("") + ylab("Water depth (based on 151 cm sensor height") +
-          theme(text = element_text(size = 18))
+          theme(text = element_text(size = 18),
+                axis.text.x = element_text(angle = 45, hjust = 1))
       })
       if(!is_ggplot(p)) p <- ERROR_GRAPH
     } else {
