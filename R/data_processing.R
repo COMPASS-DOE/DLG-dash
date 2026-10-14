@@ -202,7 +202,7 @@ compute_leveltroll <- function(leveltroll, ddt) {
     select(Plot, Logger, last_value) %>%
     distinct(Logger, .keep_all = TRUE) ->
     leveltroll_bad_sensors
-  
+
   list(leveltroll = leveltroll_full,
        leveltroll_bdg = leveltroll_bdg,
        leveltroll_bad_sensors = leveltroll_bad_sensors)

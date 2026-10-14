@@ -166,22 +166,38 @@ server <- function(input, output, session) {
   
   output$teros12_bad_sensors_table <- DT::renderDataTable({
     dropbox_data()[["teros12_bad_sensors"]] %>%
-      datatable(options = list(scrollX = TRUE, searching = FALSE, pageLength = 5))
+      datatable(extensions = "Buttons",
+                options = list(scrollX = TRUE, searching = FALSE, pageLength = 5, dom = "Bt", buttons = list(
+                    extend = "copy",
+                    text = 'Copy')
+      ))
   })
   
   output$teros21_bad_sensors_table <- DT::renderDataTable({
     dropbox_data()[["teros21_bad_sensors"]] %>%
-      datatable(options = list(scrollX = TRUE, searching = FALSE, pageLength = 5))
+      datatable(extensions = "Buttons",
+                options = list(scrollX = TRUE, searching = FALSE, pageLength = 5, dom = "Bt", buttons = list(
+                  extend = "copy",
+                  text = 'Copy')
+                ))
   })
   
   output$troll600_bad_sensors_table <- DT::renderDataTable({
     dropbox_data()[["troll600_bad_sensors"]] %>%
-      datatable(options = list(scrollX = TRUE, searching = FALSE, pageLength = 5))
+      datatable(extensions = "Buttons",
+                options = list(scrollX = TRUE, searching = FALSE, pageLength = 5, dom = "Bt", buttons = list(
+                  extend = "copy",
+                  text = 'Copy')
+                ))
   })
   
   output$leveltroll_bad_sensors_table <- DT::renderDataTable({
     dropbox_data()[["leveltroll_bad_sensors"]] %>%
-      datatable(options = list(scrollX = TRUE, searching = FALSE, pageLength = 5))
+      datatable(extensions = "Buttons",
+                options = list(scrollX = TRUE, searching = FALSE, pageLength = 5, dom = "Bt", buttons = list(
+                  extend = "copy",
+                  text = 'Copy')
+                ))
   })
   
   # ------------------ Main dashboard bad sensor graphs  -----------------------
@@ -292,7 +308,7 @@ server <- function(input, output, session) {
         # have that be the color; otherwise by depth; otherwise by ID
         if(length(unique(selected_data$Plot)) > 1) {
           b <- b + aes(color = Plot)
-        } else if(length(unique(selected_data$variable)) > 1) {
+        } else {
           b <- b + aes(color = variable)
         }
       })
@@ -306,7 +322,7 @@ server <- function(input, output, session) {
   output$bad_leveltroll_plot <- renderPlot({
     
     if(length(input$leveltroll_bad_sensors_table_rows_selected)) {
-      
+
       ddt <- reactive({ DASHBOARD_DATETIME() })()
       
       dropbox_data()[["leveltroll_bad_sensors"]] %>%
@@ -328,7 +344,7 @@ server <- function(input, output, session) {
         # have that be the color; otherwise by depth; otherwise by ID
         if(length(unique(selected_data$Plot)) > 1) {
           b <- b + aes(color = Plot)
-        } else if(length(unique(selected_data$variable)) > 1) {
+        } else {
           b <- b + aes(color = variable)
         }
       })
@@ -357,7 +373,7 @@ server <- function(input, output, session) {
           group_by(Plot, variable, Logger, TIMESTAMP) %>%
           summarise(value = mean(value, na.rm = TRUE), .groups = "drop") %>%
           ggplot() +
-          facet_wrap(Logger ~ variable, scales = "free", ncol = 3) +
+          facet_grid(variable ~ Logger, scales = "free_y", axes = "all") +
           geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
                     xmin = progress()$EVENT_START, xmax = Inf,
                     ymin = -Inf, ymax = Inf) +
@@ -395,7 +411,7 @@ server <- function(input, output, session) {
           group_by(Plot, variable, Logger, TIMESTAMP) %>%
           summarise(value = mean(value, na.rm = TRUE), .groups = "drop") %>%
           ggplot() +
-          facet_wrap(Logger ~ variable, scales = "free", ncol = 2) +
+          facet_grid(variable ~ Logger, scales = "free_y", axes = "all") +
           geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
                     xmin = progress()$EVENT_START, xmax = Inf,
                     ymin = -Inf, ymax = Inf) +
@@ -424,7 +440,7 @@ server <- function(input, output, session) {
     if(nrow(troll600) > 0) {
       p <- try({
         ggplot(troll600) +
-          facet_wrap(Logger ~ variable, scales = "free", ncol = 4) +
+          facet_grid(variable ~ Logger, scales = "free_y", axes = "all") +
           geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
                     xmin = progress()$EVENT_START, xmax = Inf,
                     ymin = -Inf, ymax = Inf) +
@@ -453,7 +469,7 @@ server <- function(input, output, session) {
     if(nrow(leveltroll) > 0) {
       p <- try({
         ggplot(leveltroll) +
-          facet_wrap(Plot ~ Logger, scales = "free", ncol = 1) +
+          facet_wrap(Logger ~ variable, scales = "free_y", ncol = 1) +
           geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
                     xmin = progress()$EVENT_START, xmax = Inf,
                     ymin = -Inf, ymax = Inf) +
