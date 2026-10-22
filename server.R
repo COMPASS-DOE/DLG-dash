@@ -110,7 +110,7 @@ server <- function(input, output, session) {
       }, min = 0, max = 5)
 
       
-      last_data_download$ldt <- Sys.time()
+      last_data_download$ldt <- with_tz(Sys.time(), tzone = "EST")
       
     } else {
       stop("DATA_SOURCE ", DATA_SOURCE, " not supported")
