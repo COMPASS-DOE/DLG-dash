@@ -475,6 +475,7 @@ server <- function(input, output, session) {
                     ymin = -Inf, ymax = Inf) +
           geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
           xlab("") + ylab("Water depth (based on 151 cm sensor height") +
+          coord_cartesian(ylim = c(0, 50)) +
           theme(text = element_text(size = 18),
                 axis.text.x = element_text(angle = 45, hjust = 1))
       })
