@@ -15,6 +15,8 @@ if(!require("compasstools")) {
     stop("Need to devtools::install_github('COMPASS-DOE/compasstools')")
 }
 
+START <- as.POSIXct("10-20-2026 08:40:00", format = "%m-%d-%Y %H:%M:%OS", tz = "EST")
+
 # The TESTING flag causes the server to load static data in offline-data/
 # When writing new code or debugging, it's often useful to set this to TRUE
 # so as not to spend time downloading from Dropbox
@@ -29,7 +31,7 @@ EVENT_LENGTH <- 3
 
 GRAPH_TIME_WINDOW <- 24   # hours back from the dashboard datetime
 GRAPH_TIME_INTERVAL <- "15 minutes"  # used by round_date in graphs
-FLAG_TIME_WINDOW <- 9         # hours back from the dashboard datetime
+FLAG_TIME_WINDOW <- 2         # hours back from the dashboard datetime
 
 # The 'no data' graph that's shown if no rows are selected, etc.
 NO_DATA_GRAPH <- ggplot() +

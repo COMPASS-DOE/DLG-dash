@@ -7,7 +7,7 @@
 # For TEROS, these are all 1%/99% quantiles of test data
 # This one is a tibble because TEROS is three variables in a single dataset
 TEROS12_RANGE <- tribble(~variable, ~low, ~high,
-                         "EC",      10,   4500, #225 normally
+                         "EC",      0,   4500, #225 normally
                          "temp",    5,    25,
                          "vwc",     2000, 4000)
 
@@ -38,7 +38,7 @@ LEVELTROLL_RANGE <- c(0, 152)
 # Badge colors and 'trigger' values
 # Currently green-yellow-red; could have more colors if desired
 BADGE_COLORS <- c("green" = 0.0,    # green starts at 0% fail (this shouldn't change)
-                  "yellow" = 0.05,  # yellow starts at 5% fail
+                  "yellow" = 0.10,  # yellow starts at 5% fail
                   "red" = 0.3)      # red starts at 20%
 
 # Compute badge color(s) based on fraction(s) out

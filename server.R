@@ -5,7 +5,7 @@ source("global.R")
 
 server <- function(input, output, session) {
   
-  dataInvalidate  <- reactiveTimer(2 * 60 * 1000) # 15 minutes
+  dataInvalidate  <- reactiveTimer(15 * 60 * 1000) # 15 minutes
   
   # If pulling from GitHub, we keep track of the latest preprocessor commit
   # and only download when that changes
@@ -15,7 +15,7 @@ server <- function(input, output, session) {
     renderText(
       paste0("Latest data update: ", 
              format(last_data_download$ldt, format = "%Y-%m-%d %H:%M:%S %Z"),
-             " (commit ", last_data_download$ldc, ")")
+             " (commit ", last_data_download$ldc, ")") 
     )
  
   # ------------------ Data invalidation --------------------------
@@ -131,8 +131,9 @@ server <- function(input, output, session) {
   time_elapsed <- eventReactive(
     list(input$prog_button, dropbox_data()),
     {
-      start <- progress()$EVENT_START
-      end   <- reactive({ DASHBOARD_DATETIME() })()
+      # start <- progress()$EVENT_START
+      start <- START
+      end <- reactive({ DASHBOARD_DATETIME() })()
       
       total_mins <- floor(as.numeric(end - start, units = "mins"))
       
@@ -155,7 +156,7 @@ server <- function(input, output, session) {
         summarise(Timestamp = last(TIMESTAMP), value = round(last(value), digits = 2)) |> 
         mutate(Timestamp = format(Timestamp, "%b %d %H:%M:%S")) -> last_value
 
-      paste("The F1 plot water level is at", last_value$value, "cm on", last_value$Timestamp)
+      paste("The F1 plot water level is at", last_value$value, "cm on", last_value$Timestamp, "EST")
     }, 
     ignoreInit = FALSE)
   
@@ -364,27 +365,24 @@ server <- function(input, output, session) {
     
     ddt <- reactive({ DASHBOARD_DATETIME() })()
     
-    dropbox_data()[["teros12"]] ->
-      teros12
+    dropbox_data()[["teros12"]] |> 
+      group_by(Plot, variable, depth_cm, TIMESTAMP) %>%
+      summarise(value = mean(value, na.rm = TRUE), .groups = "drop") -> teros12
 
     if(nrow(teros12) > 0) {
       p <- try({
         teros12 %>%
-          group_by(Plot, variable, Logger, TIMESTAMP) %>%
-          summarise(value = mean(value, na.rm = TRUE), .groups = "drop") %>%
           ggplot() +
-          facet_grid(variable ~ Logger, scales = "free_y", axes = "all") +
+          facet_wrap(variable ~ depth_cm, scales = "free_y", ncol = 2) +
           geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
-                    xmin = progress()$EVENT_START, xmax = Inf,
+                    xmin = START, xmax = Inf,
                     ymin = -Inf, ymax = Inf) +
           geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
           xlab("") +
-          theme(text = element_text(size = 18),
-                axis.text.x = element_text(angle = 45, hjust = 1)) #+
-          # scale_x_datetime(
-          #   breaks = "1 day",
-          #   date_labels = "%b %d %M:%S" # Format how the date looks
-          # )
+          theme(text = element_text(size = 16),
+                axis.text.x = element_text(angle = 45, hjust = 1),
+                strip.background = element_rect(color = "grey90", linewidth = 2)
+                )
       })
       if(!is_ggplot(p)) p <- ERROR_GRAPH
     } else {
@@ -408,17 +406,19 @@ server <- function(input, output, session) {
     if(nrow(teros21) > 0) {
       p <- try({
         teros21 %>%
-          group_by(Plot, variable, Logger, TIMESTAMP) %>%
+          group_by(Plot, variable, depth_cm, TIMESTAMP) %>%
           summarise(value = mean(value, na.rm = TRUE), .groups = "drop") %>%
           ggplot() +
-          facet_grid(variable ~ Logger, scales = "free_y", axes = "all") +
+          facet_wrap(variable ~ depth_cm, scales = "free_y", ncol = 2) +
           geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
-                    xmin = progress()$EVENT_START, xmax = Inf,
+                    xmin = START, xmax = Inf,
                     ymin = -Inf, ymax = Inf) +
           geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
           xlab("") +
           theme(text = element_text(size = 18),
-                axis.text.x = element_text(angle = 45, hjust = 1))
+                axis.text.x = element_text(angle = 45, hjust = 1),
+                strip.background = element_rect(color = "grey90", linewidth = 2)
+                )
       })
       if(!is_ggplot(p)) p <- ERROR_GRAPH
     } else {
@@ -440,14 +440,16 @@ server <- function(input, output, session) {
     if(nrow(troll600) > 0) {
       p <- try({
         ggplot(troll600) +
-          facet_grid(variable ~ Logger, scales = "free_y", axes = "all") +
+          facet_wrap(~variable, scales = "free_y", ncol = 1) +
           geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
-                    xmin = progress()$EVENT_START, xmax = Inf,
+                    xmin = START, xmax = Inf,
                     ymin = -Inf, ymax = Inf) +
           geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
           xlab("") +
           theme(text = element_text(size = 18),
-                axis.text.x = element_text(angle = 45, hjust = 1))
+                axis.text.x = element_text(angle = 45, hjust = 1),
+                strip.background = element_rect(color = "grey90", linewidth = 2)
+                )
       })
       if(!is_ggplot(p)) p <- ERROR_GRAPH
     } else {
@@ -465,18 +467,20 @@ server <- function(input, output, session) {
     
     dropbox_data()[["leveltroll"]] ->
       leveltroll
-
+browser()
     if(nrow(leveltroll) > 0) {
       p <- try({
         ggplot(leveltroll) +
           facet_wrap(Logger ~ variable, scales = "free_y", ncol = 1) +
           geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
-                    xmin = progress()$EVENT_START, xmax = Inf,
+                    xmin = START, xmax = Inf,
                     ymin = -Inf, ymax = Inf) +
           geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
           xlab("") + ylab("Water depth (based on 151 cm sensor height") +
           theme(text = element_text(size = 18),
-                axis.text.x = element_text(angle = 45, hjust = 1))
+                axis.text.x = element_text(angle = 45, hjust = 1),
+                strip.background = element_rect(color = "grey90", linewidth = 2)
+                )
       })
       if(!is_ggplot(p)) p <- ERROR_GRAPH
     } else {

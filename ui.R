@@ -52,8 +52,8 @@ ui <- dashboardPage(
         ),
         fluidRow(
           # Gear UI is defined in R/gear_module.R
-          column(1, 
-                 gearUI("gear")),
+          # column(1, 
+          #        gearUI("gear")),
           column(5,
                  shinydashboardPlus::box(
                    title = "Flood Stats",
@@ -111,19 +111,19 @@ ui <- dashboardPage(
       tabItem(
         tabName = "teros12",
         fluidRow(
-          plotOutput("teros12_plot", width = "100%", height = "900px")
+          plotOutput("teros12_plot", width = "100%", height = "1000px")
         )
       ),
       tabItem(
         tabName = "teros21",
         fluidRow(
-          plotOutput("teros21_plot", width = "100%", height = "900px")
+          plotOutput("teros21_plot", width = "100%", height = "1000px")
         )
       ),
       tabItem(
         tabName = "aquatroll",
         fluidRow(
-          plotOutput("aquatroll_plot", width = "100%", height = "900px")
+          plotOutput("aquatroll_plot", width = "100%", height = "1500px")
         )
       ),
       tabItem(
