@@ -15,7 +15,7 @@ if(!require("compasstools")) {
     stop("Need to devtools::install_github('COMPASS-DOE/compasstools')")
 }
 
-START <- as.POSIXct("10-20-2026 08:40:00", format = "%m-%d-%Y %H:%M:%OS", tz = "EST")
+#START <- as.POSIXct("10-20-2026 08:40:00", format = "%m-%d-%Y %H:%M:%OS", tz = "EST")
 
 # The TESTING flag causes the server to load static data in offline-data/
 # When writing new code or debugging, it's often useful to set this to TRUE

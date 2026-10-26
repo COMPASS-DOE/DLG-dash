@@ -374,8 +374,9 @@ server <- function(input, output, session) {
         teros12 %>%
           ggplot() +
           facet_wrap(variable ~ depth_cm, scales = "free_y", ncol = 2) +
-          geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
-                    xmin = START, xmax = Inf,
+          geom_rect(group = 1, color = NA,
+                    fill = "#BBE7E6", alpha = 0.02,
+                    xmin = progress()$EVENT_START, xmax = Inf,
                     ymin = -Inf, ymax = Inf) +
           geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
           xlab("") +
@@ -410,8 +411,9 @@ server <- function(input, output, session) {
           summarise(value = mean(value, na.rm = TRUE), .groups = "drop") %>%
           ggplot() +
           facet_wrap(variable ~ depth_cm, scales = "free_y", ncol = 2) +
-          geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
-                    xmin = START, xmax = Inf,
+          geom_rect(group = 1, color = NA,
+                    fill = "#BBE7E6", alpha = 0.02,
+                    xmin = progress()$EVENT_START, xmax = Inf,
                     ymin = -Inf, ymax = Inf) +
           geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
           xlab("") +
@@ -441,8 +443,9 @@ server <- function(input, output, session) {
       p <- try({
         ggplot(troll600) +
           facet_wrap(~variable, scales = "free_y", ncol = 1) +
-          geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
-                    xmin = START, xmax = Inf,
+          geom_rect(group = 1, color = NA,
+                    fill = "#BBE7E6", alpha = 0.02,
+                    xmin = progress()$EVENT_START, xmax = Inf,
                     ymin = -Inf, ymax = Inf) +
           geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
           xlab("") +
