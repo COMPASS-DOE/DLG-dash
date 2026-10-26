@@ -52,8 +52,8 @@ ui <- dashboardPage(
         ),
         fluidRow(
           # Gear UI is defined in R/gear_module.R
-          # column(1, 
-          #        gearUI("gear")),
+          column(1,
+                 gearUI("gear")),
           column(5,
                  shinydashboardPlus::box(
                    title = "Flood Stats",
