@@ -110,7 +110,7 @@ server <- function(input, output, session) {
       }, min = 0, max = 5)
 
       
-      last_data_download$ldt <- Sys.time()
+      last_data_download$ldt <- with_tz(Sys.time(), tzone = "EST")
       
     } else {
       stop("DATA_SOURCE ", DATA_SOURCE, " not supported")
@@ -131,8 +131,8 @@ server <- function(input, output, session) {
   time_elapsed <- eventReactive(
     list(input$prog_button, dropbox_data()),
     {
-      # start <- progress()$EVENT_START
-      start <- START
+      start <- progress()$EVENT_START
+      #start <- START
       end <- reactive({ DASHBOARD_DATETIME() })()
       
       total_mins <- floor(as.numeric(end - start, units = "mins"))
@@ -467,16 +467,21 @@ server <- function(input, output, session) {
     
     dropbox_data()[["leveltroll"]] ->
       leveltroll
-browser()
+
     if(nrow(leveltroll) > 0) {
       p <- try({
         ggplot(leveltroll) +
           facet_wrap(Logger ~ variable, scales = "free_y", ncol = 1) +
-          geom_rect(group = 1, color = NA, fill = "#BBE7E6", alpha = 0.7,
-                    xmin = START, xmax = Inf,
+          geom_rect(group = 1, color = NA,
+                    fill = "#BBE7E6", alpha = 0.02,
+                    xmin = progress()$EVENT_START, xmax = Inf,
                     ymin = -Inf, ymax = Inf) +
           geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
-          xlab("") + ylab("Water depth (based on 151 cm sensor height") +
+          xlab("") + 
+          ylab(paste("Water depth (based on", 
+                     LEVELTROLL_RANGE[2], 
+                     "cm sensor height)")) +
+          coord_cartesian(ylim = c(0, 50)) +
           theme(text = element_text(size = 18),
                 axis.text.x = element_text(angle = 45, hjust = 1),
                 strip.background = element_rect(color = "grey90", linewidth = 2)
