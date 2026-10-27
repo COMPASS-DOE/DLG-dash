@@ -2,14 +2,7 @@
 # Stephanie Pennington October 2026
 
 library(shiny)
-library(shinydashboard)
-library(shinydashboardPlus)
 library(dplyr)
-library(shinyWidgets)
-library(shinybusy)
-library(shinyalert)
-library(gmailr)
-library(bslib)
 
 ui <- dashboardPage(
   
