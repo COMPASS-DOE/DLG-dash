@@ -471,7 +471,7 @@ server <- function(input, output, session) {
         ggplot(leveltroll) +
           facet_wrap(Logger ~ variable, scales = "free_y", ncol = 1) +
           geom_rect(group = 1, color = NA,
-                    fill = "#BBE7E6", alpha = 0.02,
+                    fill = "#BBE7E6", alpha = 0.2,
                     xmin = progress()$EVENT_START, xmax = Inf,
                     ymin = -Inf, ymax = Inf) +
           geom_line(aes(TIMESTAMP, value, color = Plot), na.rm = TRUE) +
@@ -480,7 +480,8 @@ server <- function(input, output, session) {
                      LEVELTROLL_RANGE[2], 
                      "cm sensor height)")) +
           coord_cartesian(ylim = c(0, 50)) +
-          theme(text = element_text(size = 18),
+          theme(panel.ontop = TRUE,
+                text = element_text(size = 18),
                 axis.text.x = element_text(angle = 45, hjust = 1))
       })
       if(!is_ggplot(p)) p <- ERROR_GRAPH
